@@ -148,6 +148,25 @@ let mean = latencies.reduce(0, +) / count
 let median = latencies[latencies.count / 2]
 let p95 = latencies[min(latencies.count - 1, Int(Double(latencies.count - 1) * 0.95))]
 print(String(format: "gold n=%.0f top1=%.1f%% top3=%.1f%% top5=%.1f%%", count, Double(hit1)/count*100, Double(hit3)/count*100, Double(hit5)/count*100))
+// Larger lexical holdout. This is not a human-authored blind set: it is a
+// deterministic spaced sample of dictionary headwords.
+let holdoutPath = URL(fileURLWithPath: "DataSources/eval/holdout_500.tsv")
+if FileManager.default.fileExists(atPath: holdoutPath.path) {
+    var h1 = 0, h3 = 0, h5 = 0, total = 0
+    for line in try String(contentsOf: holdoutPath, encoding: .utf8).split(separator: "\n") {
+        let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
+        guard fields.count == 2 else { continue }
+        let input = fields[0].replacingOccurrences(of: " ", with: "")
+        let expected = String(fields[1])
+        let result = try engine.predict(input: input, language: .chinese, contextWords: [], limit: 8)
+        total += 1
+        if result.first?.text == expected { h1 += 1 }
+        if result.prefix(3).contains(where: { $0.text == expected }) { h3 += 1 }
+        if result.prefix(5).contains(where: { $0.text == expected }) { h5 += 1 }
+    }
+    let n = Double(max(total, 1))
+    print(String(format: "holdout n=%.0f top1=%.1f%% top3=%.1f%% top5=%.1f%%", Double(total), Double(h1)/n*100, Double(h3)/n*100, Double(h5)/n*100))
+}
 print(String(format: "latency mean=%.2fms median=%.2fms p95=%.2fms max=%.2fms (CoreCheck process, macOS)", mean, median, p95, latencies.last ?? 0))
 let engineStart = CFAbsoluteTimeGetCurrent()
 let probeEngine = try PredictionEngine(paths: DatasetPaths.inDirectory(generatorDir)!, userHistory: UserHistoryStore(containerURL: tmp), fuzzyOptions: .common)

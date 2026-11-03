@@ -7,6 +7,7 @@ final class KeyboardView: UIView {
     var onCursorMove: ((Int) -> Void)?
 
     private let blurView: UIVisualEffectView
+    private let tintView = UIView()
     private let candidateBar = CandidateBarView()
     private let candidatePanel = CandidatePanelView()
     private let rowsStack = UIStackView()
@@ -37,6 +38,11 @@ final class KeyboardView: UIView {
 
         blurView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(blurView)
+        tintView.translatesAutoresizingMaskIntoConstraints = false
+        tintView.backgroundColor = KeyboardTheme.background
+        tintView.alpha = KeyboardTheme.backgroundOpacity
+        tintView.isUserInteractionEnabled = false
+        addSubview(tintView)
         addSubview(candidateBar)
         addSubview(candidatePanel)
         candidatePanel.isHidden = true
@@ -58,6 +64,10 @@ final class KeyboardView: UIView {
             blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
             blurView.topAnchor.constraint(equalTo: topAnchor),
             blurView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            tintView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tintView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tintView.topAnchor.constraint(equalTo: topAnchor),
+            tintView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             candidateBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             candidateBar.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -93,6 +103,7 @@ final class KeyboardView: UIView {
 
     func applyAppearance() {
         layer.cornerRadius = KeyboardTheme.backgroundCornerRadius
+        tintView.alpha = KeyboardTheme.backgroundOpacity
         rowsStack.spacing = 8
         rowsLeadingConstraint?.constant = KeyboardTheme.horizontalMargin
         rowsTrailingConstraint?.constant = -KeyboardTheme.horizontalMargin

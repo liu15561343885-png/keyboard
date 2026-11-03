@@ -192,6 +192,7 @@ struct KeyboardAppearanceView: View {
                 appearanceSlider("按键大小", value: binding(\.keyFontScale), range: 0.8...1.2, format: "%.2f×")
                 appearanceSlider("触摸扩展", value: binding(\.keyHitExpansion), range: 0...5, format: "%.1f pt")
                 appearanceSlider("触感强度", value: binding(\.hapticStrength), range: 0.4...1.2, format: "%.2f×")
+                appearanceSlider("背景浓度", value: binding(\.backgroundOpacity), range: 0.2...1, format: "%.2f")
             }
             Section {
                 appearanceSlider("键盘高度", value: binding(\.keyboardHeight), range: 240...340, format: "%.0f pt")

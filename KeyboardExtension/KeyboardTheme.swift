@@ -3,8 +3,8 @@ import UIKit
 enum KeyboardTheme {
     static let background = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 0.55)
-            : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 0.55)
+            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
+            : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 1)
     }
 
     static let candidateBackground = UIColor { _ in .clear }
@@ -13,6 +13,7 @@ enum KeyboardTheme {
     static var borderOpacity: CGFloat = 0.25
     static var cornerRadius: CGFloat = 9
     static var backgroundCornerRadius: CGFloat = 16
+    static var backgroundOpacity: CGFloat = 0.55
     static var keyboardHeight: CGFloat = 288
     static var horizontalMargin: CGFloat = 0
     static var keySpacing: CGFloat = 0

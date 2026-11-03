@@ -19,7 +19,9 @@ private enum SettingsPasteboard {
     static let type = "com.liu15561343885.privatekeyboard.settings"
 
     static func read() -> KeyboardSettings? {
-        guard let data = UIPasteboard(name: name, create: true)?.data(forPasteboardType: type) else { return nil }
+        let named = UIPasteboard(name: name, create: true)?.data(forPasteboardType: type)
+        let general = UIPasteboard.general.data(forPasteboardType: type)
+        guard let data = named ?? general else { return nil }
         return try? JSONDecoder().decode(KeyboardSettings.self, from: data)
     }
 }
@@ -503,6 +505,7 @@ final class KeyboardViewController: UIInputViewController {
         KeyboardTheme.keySpacing = CGFloat(settings.keySpacing)
         KeyboardTheme.hitExpansion = CGFloat(settings.keyHitExpansion)
         KeyboardTheme.keyFontScale = CGFloat(settings.keyFontScale)
+        KeyboardTheme.backgroundOpacity = CGFloat(settings.backgroundOpacity)
         heightConstraint?.constant = CGFloat(settings.keyboardHeight)
         preferredContentSize = CGSize(width: 0, height: CGFloat(settings.keyboardHeight))
         keyboardView.applyAppearance()

@@ -16,6 +16,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
     public var keyHitExpansion: Double
     public var keyFontScale: Double
     public var hapticStrength: Double
+    public var backgroundOpacity: Double
     public var schemaVersion: Int
 
     public init(
@@ -34,7 +35,8 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         keyHitExpansion: Double = 2,
         keyFontScale: Double = 1,
         hapticStrength: Double = 1,
-        schemaVersion: Int = 5
+        backgroundOpacity: Double = 0.55,
+        schemaVersion: Int = 6
     ) {
         self.soundEnabled = soundEnabled
         self.hapticsEnabled = hapticsEnabled
@@ -51,6 +53,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         self.keyHitExpansion = keyHitExpansion
         self.keyFontScale = keyFontScale
         self.hapticStrength = hapticStrength
+        self.backgroundOpacity = backgroundOpacity
         self.schemaVersion = schemaVersion
     }
 
@@ -58,7 +61,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         case soundEnabled, hapticsEnabled, fuzzy, lastLanguage, script, nineKeyEnabled,
              keyCornerRadius, keyOpacity, keyBorderOpacity, keyboardHeight,
              keyboardHorizontalInset, keySpacing, keyHitExpansion, keyFontScale,
-             hapticStrength, schemaVersion
+             hapticStrength, backgroundOpacity, schemaVersion
     }
 
     public init(from decoder: Decoder) throws {
@@ -78,7 +81,8 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         self.keyHitExpansion = try container.decodeIfPresent(Double.self, forKey: .keyHitExpansion) ?? 2
         self.keyFontScale = try container.decodeIfPresent(Double.self, forKey: .keyFontScale) ?? 1
         self.hapticStrength = try container.decodeIfPresent(Double.self, forKey: .hapticStrength) ?? 1
-        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 5
+        self.backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.55
+        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 6
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -98,6 +102,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         try container.encode(keyHitExpansion, forKey: .keyHitExpansion)
         try container.encode(keyFontScale, forKey: .keyFontScale)
         try container.encode(hapticStrength, forKey: .hapticStrength)
+        try container.encode(backgroundOpacity, forKey: .backgroundOpacity)
         try container.encode(schemaVersion, forKey: .schemaVersion)
     }
 }

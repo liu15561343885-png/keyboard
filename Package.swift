@@ -13,7 +13,8 @@ let package = Package(
         .executable(name: "dictionary-builder", targets: ["DictionaryBuilder"]),
         .executable(name: "manifest-tool", targets: ["ManifestTool"]),
         .executable(name: "core-check", targets: ["CoreCheck"]),
-        .executable(name: "ngram-builder", targets: ["NgramBuilder"])
+        .executable(name: "ngram-builder", targets: ["NgramBuilder"]),
+        .executable(name: "holdout-builder", targets: ["HoldoutBuilder"])
     ],
     targets: [
         .target(
@@ -34,6 +35,11 @@ let package = Package(
             name: "ManifestTool",
             dependencies: ["PrivateKeyboardCore", "PrivateKeyboardUpdater"],
             path: "Tools/ManifestTool"
+        ),
+        .executableTarget(
+            name: "HoldoutBuilder",
+            dependencies: ["PrivateKeyboardCore"],
+            path: "Tools/HoldoutBuilder"
         ),
         .executableTarget(
             name: "NgramBuilder",
