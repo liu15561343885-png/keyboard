@@ -96,19 +96,35 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         let paths = resolved.paths
+        let fallback: (paths: DatasetPaths, version: String)?
+        if resolved.source == .appGroup {
+            fallback = DatasetResolver.resolve(containerURL: nil).map { ($0.paths, $0.version) }
+        } else {
+            fallback = nil
+        }
         let history = userHistory
         let settingsSnapshot = settings
         predictionQueue.async { [weak self] in
-            let loaded = try? PredictionEngine(
+            var loaded = try? PredictionEngine(
                 paths: paths,
                 userHistory: history,
                 fuzzyOptions: settingsSnapshot.fuzzy
             )
+            var loadedVersion = resolved.version
+            if loaded == nil, let fallback,
+               let fallbackEngine = try? PredictionEngine(
+                   paths: fallback.paths,
+                   userHistory: history,
+                   fuzzyOptions: settingsSnapshot.fuzzy
+               ) {
+                loaded = fallbackEngine
+                loadedVersion = fallback.version
+            }
             DispatchQueue.main.async {
                 guard let self else { return }
                 if let loaded {
                     self.engine = loaded
-                    self.activeDatasetVersion = resolved.version
+                    self.activeDatasetVersion = loadedVersion
                 }
                 self.isLoadingEngine = false
                 if loaded != nil {

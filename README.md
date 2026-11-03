@@ -23,6 +23,7 @@
 | 按键音、触感反馈 | 代码已实现，受设置控制 |
 | 长按删除连续删除 | 已实现，Catalyst smoke 检查手势存在 |
 | 主 App 自动/手动更新、Ed25519 校验、原子安装、回滚 | 已实现并有安装/回滚测试 |
+| App Group 数据损坏时回退扩展内置数据 | 已实现（加载失败时重试 bundle） |
 | 键盘扩展不依赖在线服务 | 架构上扩展只链接 `PrivateKeyboardCore`，不链接更新模块；隐私脚本检查 |
 | 清除个人词频 | 已实现 |
 | App Store 隐私清单与许可证随包分发 | 已实现；`Resources/PrivacyInfo.xcprivacy` |
