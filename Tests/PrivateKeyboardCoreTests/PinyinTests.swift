@@ -94,6 +94,19 @@ final class PinyinTests: XCTestCase {
         XCTAssertTrue(candidates.contains { $0.text == "你好" }, "T9 candidates: \(candidates.map(\.text))")
     }
 
+    func testT9DecoderEdgeCases() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let engine = try makeEngine(built)
+        let decoder = T9PinyinDecoder(inventory: engine.inventory)
+        XCTAssertEqual(T9PinyinDecoder.digits(for: "ni"), "64")
+        XCTAssertEqual(T9PinyinDecoder.digits(for: "wo"), "96")
+        XCTAssertTrue(decoder.keys(for: "").isEmpty)
+        XCTAssertFalse(decoder.keys(for: "2").isEmpty)
+        let candidates = try engine.predictT9(digits: "96", contextWords: [], limit: 10)
+        XCTAssertTrue(candidates.contains { $0.text == "我" }, "T9 wo candidates: \(candidates.map(\.text))")
+    }
+
     func testTraditionalScriptPreference() throws {
         let built = try TestDataset.make()
         defer { built.remove() }
