@@ -274,13 +274,17 @@ final class KeyboardView: UIView {
         }
         columns[0].leadingAnchor.constraint(equalTo: grid.leadingAnchor).isActive = true
         rows[0].topAnchor.constraint(equalTo: grid.topAnchor).isActive = true
-        for index in 1..<columns.count {
-            columns[index].leadingAnchor.constraint(equalTo: columns[index - 1].trailingAnchor).isActive = true
-            columns[index].widthAnchor.constraint(equalTo: columns[0].widthAnchor).isActive = true
+        for index in 0..<columns.count {
+            columns[index].widthAnchor.constraint(equalTo: grid.widthAnchor, multiplier: 0.2).isActive = true
+            if index > 0 {
+                columns[index].leadingAnchor.constraint(equalTo: columns[index - 1].trailingAnchor).isActive = true
+            }
         }
-        for index in 1..<rows.count {
-            rows[index].topAnchor.constraint(equalTo: rows[index - 1].bottomAnchor).isActive = true
-            rows[index].heightAnchor.constraint(equalTo: rows[0].heightAnchor).isActive = true
+        for index in 0..<rows.count {
+            rows[index].heightAnchor.constraint(equalTo: grid.heightAnchor, multiplier: 0.25).isActive = true
+            if index > 0 {
+                rows[index].topAnchor.constraint(equalTo: rows[index - 1].bottomAnchor).isActive = true
+            }
         }
         columns.last?.trailingAnchor.constraint(equalTo: grid.trailingAnchor).isActive = true
         rows.last?.bottomAnchor.constraint(equalTo: grid.bottomAnchor).isActive = true
