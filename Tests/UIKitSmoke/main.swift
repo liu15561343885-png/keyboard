@@ -23,6 +23,17 @@ let emojiKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("emoji page keys:", emojiKeys)
 precondition(emojiKeys == 37, "expected 37 key controls, got \(emojiKeys)")
 
+keyboard.configure(page: .letters, language: .chinese, shifted: false, force: true)
+keyboard.layoutIfNeeded()
+let labelsBefore = allSubviews(keyboard).compactMap { ($0 as? UILabel)?.text }
+for expected in ["q", "123", "空格", "换行"] {
+    precondition(labelsBefore.contains(expected), "missing key label \(expected)")
+}
+
+let lightBackground = KeyboardTheme.background.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+let darkBackground = KeyboardTheme.background.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
+precondition(!lightBackground.isEqual(darkBackground), "dark mode background did not resolve differently")
+
 let candidate = InputCandidate(
     id: "test",
     text: "你好",
@@ -39,4 +50,14 @@ keyboard.layoutIfNeeded()
 let candidateCells = allSubviews(keyboard).filter { String(describing: type(of: $0)) == "CandidateCell" }
 print("candidate cells:", candidateCells.count)
 precondition(candidateCells.count == 3, "expected 3 candidate cells, got \(candidateCells.count)")
+let candidateLabels = candidateCells.flatMap { allSubviews($0) }.compactMap { ($0 as? UILabel)?.text }
+precondition(candidateLabels.contains("你好"), "missing candidate first line")
+precondition(candidateLabels.contains("phr. hello"), "missing candidate second line")
+if let bar = allSubviews(keyboard).compactMap({ $0 as? CandidateBarView }).first {
+    print("candidate bar height:", bar.bounds.height)
+    precondition(abs(bar.bounds.height - KeyboardTheme.candidateBarHeight) < 0.5, "unexpected candidate bar height")
+} else {
+    preconditionFailure("candidate bar not found")
+}
+print("dark background: \(lightBackground) vs \(darkBackground)")
 print("CATALYST KEYBOARD VIEW SMOKE PASSED")
