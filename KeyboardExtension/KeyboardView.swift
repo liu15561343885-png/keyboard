@@ -181,6 +181,13 @@ final class KeyboardView: UIView {
             row.axis = .horizontal
             row.alignment = .fill
             row.spacing = KeyboardTheme.keySpacing
+            if specs.count == 9, specs.allSatisfy({
+                if case .character = $0.action { return true }
+                return false
+            }) {
+                row.isLayoutMarginsRelativeArrangement = true
+                row.layoutMargins = UIEdgeInsets(top: 0, left: 19.3, bottom: 0, right: 19.3)
+            }
             let weights = specs.map(\.weight)
             let allEqual = weights.dropFirst().allSatisfy { abs($0 - (weights.first ?? 1)) < 0.001 }
             row.distribution = allEqual ? .fillEqually : .fillProportionally
