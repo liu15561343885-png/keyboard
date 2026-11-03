@@ -110,6 +110,9 @@ final class AppModel: ObservableObject {
         settings.keyboardHeight = defaults.keyboardHeight
         settings.keyboardHorizontalInset = defaults.keyboardHorizontalInset
         settings.keySpacing = defaults.keySpacing
+        settings.keyHitExpansion = defaults.keyHitExpansion
+        settings.keyFontScale = defaults.keyFontScale
+        settings.hapticStrength = defaults.hapticStrength
         save()
     }
 

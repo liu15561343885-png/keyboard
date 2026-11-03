@@ -77,6 +77,10 @@ final class KeyButton: UIControl {
         }
     }
 
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        bounds.insetBy(dx: -KeyboardTheme.hitExpansion, dy: -KeyboardTheme.hitExpansion).contains(point)
+    }
+
     override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
         onPress?()
         return super.beginTracking(touch, with: event)

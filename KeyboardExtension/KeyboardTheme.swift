@@ -44,8 +44,10 @@ enum KeyboardTheme {
     }
     static let accent = UIColor.systemBlue
 
-    static let keyFont = UIFont.systemFont(ofSize: 22, weight: .regular)
-    static let functionFont = UIFont.systemFont(ofSize: 15, weight: .regular)
+    static var keyFontScale: CGFloat = 1
+    static var hitExpansion: CGFloat = 2
+    static var keyFont: UIFont { UIFont.systemFont(ofSize: 22 * keyFontScale, weight: .regular) }
+    static var functionFont: UIFont { UIFont.systemFont(ofSize: 15 * keyFontScale, weight: .regular) }
     static let candidateFont = UIFont.systemFont(ofSize: 16, weight: .regular)
     static let candidateDetailFont = UIFont.systemFont(ofSize: 10.5, weight: .regular)
     static let candidateBarHeight: CGFloat = 56

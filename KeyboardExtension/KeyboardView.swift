@@ -3,7 +3,7 @@ import UIKit
 
 final class KeyboardView: UIView {
     var onAction: ((KeyAction) -> Void)?
-    var onFeedback: (() -> Void)?
+    var onFeedback: ((KeyAction) -> Void)?
     var onCursorMove: ((Int) -> Void)?
 
     private let blurView: UIVisualEffectView
@@ -117,6 +117,11 @@ final class KeyboardView: UIView {
         return UIBlurEffect(style: .systemUltraThinMaterial)
     }
 
+    func expandCandidates() {
+        guard !candidatesExpanded else { return }
+        toggleCandidates()
+    }
+
     private func toggleCandidates() {
         guard !candidateBar.isHidden else { return }
         candidatesExpanded.toggle()
@@ -124,7 +129,7 @@ final class KeyboardView: UIView {
         candidatePanel.isHidden = !candidatesExpanded
         rowsStack.isHidden = candidatesExpanded
         nineGrid?.isHidden = candidatesExpanded
-        onFeedback?()
+        onFeedback?(.page(.letters))
     }
 
     private func collapseCandidates() {
@@ -207,7 +212,7 @@ final class KeyboardView: UIView {
             row.distribution = allEqual ? .fillEqually : .fillProportionally
             for spec in specs {
                 let button = KeyButton(spec: spec)
-                button.onPress = { [weak self] in self?.onFeedback?() }
+                button.onPress = { [weak self] in self?.onFeedback?(spec.action) }
                 button.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
                 if spec.action == .backspace {
                     let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
@@ -263,8 +268,9 @@ final class KeyboardView: UIView {
 
         for cell in KeyboardLayout.nineKeyGrid(returnKeyLabel: returnKeyLabel) {
             let button = KeyButton(spec: cell.spec)
-            button.onPress = { [weak self] in self?.onFeedback?() }
-            button.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
+            button.onPress = { [weak self] in self?.onFeedback?(cell.spec.action) }
+            let event: UIControl.Event = cell.spec.action == .space ? .touchUpInside : .touchDown
+            button.addTarget(self, action: #selector(keyTapped(_:)), for: event)
             if cell.spec.action == .backspace {
                 let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
                 longPress.minimumPressDuration = 0.45
@@ -303,7 +309,7 @@ final class KeyboardView: UIView {
         case .began:
             cursorAnchorX = recognizer.location(in: self).x
             cursorRemainder = 0
-            onFeedback?()
+            onFeedback?(.space)
         case .changed:
             let x = recognizer.location(in: self).x
             let delta = x - cursorAnchorX
@@ -325,11 +331,11 @@ final class KeyboardView: UIView {
         switch recognizer.state {
         case .began:
             onAction?(.backspace)
-            onFeedback?()
+            onFeedback?(.backspace)
             deleteTimer?.invalidate()
             let timer = Timer(timeInterval: 0.09, repeats: true) { [weak self] _ in
                 self?.onAction?(.backspace)
-                self?.onFeedback?()
+                self?.onFeedback?(.backspace)
             }
             RunLoop.main.add(timer, forMode: .common)
             deleteTimer = timer

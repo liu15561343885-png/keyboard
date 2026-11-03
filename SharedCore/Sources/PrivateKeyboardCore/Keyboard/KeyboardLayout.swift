@@ -15,6 +15,7 @@ public enum KeyAction: Equatable, Sendable {
     case returnKey
     case nextKeyboard
     case toggleLanguage
+    case selectPinyin
     case page(KeyboardPage)
 }
 
@@ -95,7 +96,7 @@ public enum KeyboardLayout {
             NineKeyCell(KeySpec(returnKeyLabel, .returnKey, style: .accent), row: 2, column: 4, rowSpan: 2),
 
             NineKeyCell(KeySpec("。", .character("。"), style: .function), row: 3, column: 0),
-            NineKeyCell(KeySpec("标点", .page(.punctuation), style: .function), row: 3, column: 1),
+            NineKeyCell(KeySpec("选拼音", .selectPinyin, style: .function), row: 3, column: 1),
             NineKeyCell(KeySpec("空格", .space, style: .letter), row: 3, column: 2, columnSpan: 2)
         ]
     }

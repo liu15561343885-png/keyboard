@@ -189,6 +189,9 @@ struct KeyboardAppearanceView: View {
                 appearanceSlider("按键透明度", value: binding(\.keyOpacity), range: 0.3...1, format: "%.2f")
                 appearanceSlider("边框透明度", value: binding(\.keyBorderOpacity), range: 0...0.6, format: "%.2f")
                 appearanceSlider("键间距", value: binding(\.keySpacing), range: 0...8, format: "%.1f pt")
+                appearanceSlider("按键大小", value: binding(\.keyFontScale), range: 0.8...1.2, format: "%.2f×")
+                appearanceSlider("触摸扩展", value: binding(\.keyHitExpansion), range: 0...5, format: "%.1f pt")
+                appearanceSlider("触感强度", value: binding(\.hapticStrength), range: 0.4...1.2, format: "%.2f×")
             }
             Section {
                 appearanceSlider("键盘高度", value: binding(\.keyboardHeight), range: 240...340, format: "%.0f pt")

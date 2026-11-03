@@ -1,3 +1,4 @@
+import AudioToolbox
 import PrivateKeyboardCore
 import UIKit
 
@@ -74,18 +75,18 @@ final class KeyboardViewController: UIInputViewController {
     override func loadView() {
         let root = KeyboardInputView(frame: .zero, inputViewStyle: .keyboard)
         root.allowsSelfSizing = true
-        root.backgroundColor = KeyboardTheme.background
+        root.backgroundColor = .clear
         view = root
 
         keyboardView.onAction = { [weak self] action in
             self?.handle(action)
         }
         keyboardView.onSelectCandidate = { [weak self] candidate in
-            self?.feedback()
+            self?.feedback(for: .character(""))
             self?.commit(candidate: candidate)
         }
-        keyboardView.onFeedback = { [weak self] in
-            self?.feedback()
+        keyboardView.onFeedback = { [weak self] action in
+            self?.feedback(for: action)
         }
         keyboardView.onCursorMove = { [weak self] offset in
             self?.textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
@@ -226,6 +227,8 @@ final class KeyboardViewController: UIInputViewController {
             advanceToNextInputMode()
         case .toggleLanguage:
             toggleLanguage()
+        case .selectPinyin:
+            keyboardView.expandCandidates()
         case .page(let nextPage):
             page = nextPage
             refreshKeyboard(force: true)
@@ -402,7 +405,7 @@ final class KeyboardViewController: UIInputViewController {
 
     @discardableResult
     private func commitFirstCandidateIfAny() -> Bool {
-        guard let first = candidates.first else { return false }
+        guard activeBufferCount > 0, let first = candidates.first else { return false }
         if first.kind == .raw {
             pinyinBuffer = ""
             englishBuffer = ""
@@ -491,6 +494,8 @@ final class KeyboardViewController: UIInputViewController {
         KeyboardTheme.keyboardHeight = CGFloat(settings.keyboardHeight)
         KeyboardTheme.horizontalMargin = CGFloat(settings.keyboardHorizontalInset)
         KeyboardTheme.keySpacing = CGFloat(settings.keySpacing)
+        KeyboardTheme.hitExpansion = CGFloat(settings.keyHitExpansion)
+        KeyboardTheme.keyFontScale = CGFloat(settings.keyFontScale)
         heightConstraint?.constant = CGFloat(settings.keyboardHeight)
         preferredContentSize = CGSize(width: 0, height: CGFloat(settings.keyboardHeight))
         keyboardView.applyAppearance()
@@ -568,16 +573,24 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func idleCandidates() -> [InputCandidate] {
-        let words: [(String, String)]
+        let fallback: [(String, String)]
         if language == .chinese {
-            words = [("我", "wǒ"), ("你", "nǐ"), ("的", "de"), ("是", "shì"), ("了", "le"),
-                     ("在", "zài"), ("不", "bù"), ("有", "yǒu"), ("好", "hǎo"), ("吗", "ma"),
-                     ("这", "zhè"), ("就", "jiù"), ("都", "dōu"), ("也", "yě"), ("很", "hěn")]
+            fallback = [("我", "wǒ"), ("你", "nǐ"), ("的", "de"), ("是", "shì"), ("了", "le"),
+                        ("在", "zài"), ("不", "bù"), ("有", "yǒu"), ("好", "hǎo"), ("吗", "ma"),
+                        ("这", "zhè"), ("就", "jiù"), ("都", "dōu"), ("也", "yě"), ("很", "hěn")]
         } else {
-            words = [("the", ""), ("and", ""), ("you", ""), ("that", ""), ("this", ""),
-                     ("for", ""), ("with", ""), ("have", ""), ("not", ""), ("are", "")]
+            fallback = [("the", ""), ("and", ""), ("you", ""), ("that", ""), ("this", ""),
+                        ("for", ""), ("with", ""), ("have", ""), ("not", ""), ("are", "")]
         }
-        return words.map { text, pinyin in
+        let recent = userHistory.currentSnapshot.recents.prefix(8).map { ($0.word, "") }
+        var merged: [(String, String)] = []
+        var seen = Set<String>()
+        for item in recent + fallback {
+            guard !item.0.isEmpty, seen.insert(item.0).inserted else { continue }
+            merged.append(item)
+            if merged.count >= 15 { break }
+        }
+        return merged.map { text, pinyin in
             InputCandidate(
                 id: "idle-\(language.rawValue)-\(text)",
                 text: text,
@@ -592,12 +605,21 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
-    private func feedback() {
+    private func feedback(for action: KeyAction) {
         if settings.soundEnabled {
-            UIDevice.current.playInputClick()
+            switch action {
+            case .backspace:
+                AudioServicesPlaySystemSound(1155)
+            case .returnKey:
+                AudioServicesPlaySystemSound(1105)
+            case .space:
+                AudioServicesPlaySystemSound(1104)
+            default:
+                UIDevice.current.playInputClick()
+            }
         }
         if settings.hapticsEnabled {
-            haptic.impactOccurred(intensity: 0.55)
+            haptic.impactOccurred(intensity: CGFloat(min(1, max(0.2, 0.55 * settings.hapticStrength))))
             haptic.prepare()
         }
     }
