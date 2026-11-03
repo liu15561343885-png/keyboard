@@ -8,12 +8,17 @@ enum KeyboardTheme {
     }
 
     static let candidateBackground = UIColor { _ in .clear }
+    static let candidateCapsule = UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.12)
+            : UIColor.white.withAlphaComponent(0.74)
+    }
 
-    static var keyOpacity: CGFloat = 0.88
-    static var borderOpacity: CGFloat = 0.25
-    static var cornerRadius: CGFloat = 9
-    static var backgroundCornerRadius: CGFloat = 16
-    static var backgroundOpacity: CGFloat = 0.55
+    static var keyOpacity: CGFloat = 0.98
+    static var borderOpacity: CGFloat = 0
+    static var cornerRadius: CGFloat = 8
+    static var backgroundCornerRadius: CGFloat = 0
+    static var backgroundOpacity: CGFloat = 0.75
     static var keyboardHeight: CGFloat = 288
     static var horizontalMargin: CGFloat = 0
     static var keySpacing: CGFloat = 0
@@ -47,8 +52,8 @@ enum KeyboardTheme {
 
     static var keyFontScale: CGFloat = 1
     static var hitExpansion: CGFloat = 2
-    static var keyFont: UIFont { UIFont.systemFont(ofSize: 22 * keyFontScale, weight: .regular) }
-    static var functionFont: UIFont { UIFont.systemFont(ofSize: 15 * keyFontScale, weight: .regular) }
+    static var keyFont: UIFont { UIFont.systemFont(ofSize: 24 * keyFontScale, weight: .regular) }
+    static var functionFont: UIFont { UIFont.systemFont(ofSize: 16 * keyFontScale, weight: .regular) }
     static let candidateFont = UIFont.systemFont(ofSize: 16, weight: .regular)
     static let candidateDetailFont = UIFont.systemFont(ofSize: 10.5, weight: .regular)
     static let candidateBarHeight: CGFloat = 56

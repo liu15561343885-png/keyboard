@@ -5,6 +5,7 @@ final class CandidateBarView: UIView {
     var onSelect: ((InputCandidate) -> Void)?
     var onToggleExpand: (() -> Void)?
 
+    private let capsuleView = UIView()
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private let expandButton = UIButton(type: .system)
@@ -18,7 +19,17 @@ final class CandidateBarView: UIView {
 
         separator.backgroundColor = KeyboardTheme.separator
         separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.isHidden = true
         addSubview(separator)
+
+        capsuleView.translatesAutoresizingMaskIntoConstraints = false
+        capsuleView.backgroundColor = KeyboardTheme.candidateCapsule
+        capsuleView.layer.cornerRadius = 18
+        capsuleView.layer.cornerCurve = .continuous
+        capsuleView.layer.borderWidth = 0.5
+        capsuleView.layer.borderColor = KeyboardTheme.separator.withAlphaComponent(0.5).cgColor
+        capsuleView.isUserInteractionEnabled = false
+        addSubview(capsuleView)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
@@ -47,15 +58,20 @@ final class CandidateBarView: UIView {
             separator.bottomAnchor.constraint(equalTo: bottomAnchor),
             separator.heightAnchor.constraint(equalToConstant: 0.5),
 
-            expandButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            capsuleView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            capsuleView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            capsuleView.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            capsuleView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
+
+            expandButton.trailingAnchor.constraint(equalTo: capsuleView.trailingAnchor, constant: -4),
             expandButton.centerYAnchor.constraint(equalTo: centerYAnchor),
             expandButton.widthAnchor.constraint(equalToConstant: 30),
             expandButton.heightAnchor.constraint(equalToConstant: 40),
 
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: capsuleView.leadingAnchor, constant: 8),
             scrollView.trailingAnchor.constraint(equalTo: expandButton.leadingAnchor, constant: -2),
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.topAnchor.constraint(equalTo: capsuleView.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: capsuleView.bottomAnchor),
 
             stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
@@ -132,7 +148,7 @@ final class CandidateCell: UIControl {
         addSubview(firstLine)
         addSubview(secondLine)
 
-        let width = min(172, max(88, max(firstLine.intrinsicContentSize.width, secondLine.intrinsicContentSize.width) + 20))
+        let width = min(140, max(54, max(firstLine.intrinsicContentSize.width, secondLine.intrinsicContentSize.width) + 16))
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalToConstant: width),
             firstLine.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
@@ -155,6 +171,7 @@ final class CandidateCell: UIControl {
 
 final class CandidatePanelView: UIView {
     var onSelect: ((InputCandidate) -> Void)?
+    private let capsuleView = UIView()
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
 

@@ -26,16 +26,16 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         lastLanguage: InputLanguage = .chinese,
         script: ScriptPreference = .simplified,
         nineKeyEnabled: Bool = false,
-        keyCornerRadius: Double = 9,
-        keyOpacity: Double = 0.88,
-        keyBorderOpacity: Double = 0.25,
+        keyCornerRadius: Double = 8,
+        keyOpacity: Double = 0.98,
+        keyBorderOpacity: Double = 0,
         keyboardHeight: Double = 288,
         keyboardHorizontalInset: Double = 0,
         keySpacing: Double = 0,
         keyHitExpansion: Double = 2,
         keyFontScale: Double = 1,
         hapticStrength: Double = 1,
-        backgroundOpacity: Double = 0.55,
+        backgroundOpacity: Double = 0.75,
         schemaVersion: Int = 6
     ) {
         self.soundEnabled = soundEnabled
@@ -72,16 +72,16 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         self.lastLanguage = try container.decodeIfPresent(InputLanguage.self, forKey: .lastLanguage) ?? .chinese
         self.script = try container.decodeIfPresent(ScriptPreference.self, forKey: .script) ?? .simplified
         self.nineKeyEnabled = try container.decodeIfPresent(Bool.self, forKey: .nineKeyEnabled) ?? false
-        self.keyCornerRadius = try container.decodeIfPresent(Double.self, forKey: .keyCornerRadius) ?? 9
-        self.keyOpacity = try container.decodeIfPresent(Double.self, forKey: .keyOpacity) ?? 0.88
-        self.keyBorderOpacity = try container.decodeIfPresent(Double.self, forKey: .keyBorderOpacity) ?? 0.25
+        self.keyCornerRadius = try container.decodeIfPresent(Double.self, forKey: .keyCornerRadius) ?? 8
+        self.keyOpacity = try container.decodeIfPresent(Double.self, forKey: .keyOpacity) ?? 0.98
+        self.keyBorderOpacity = try container.decodeIfPresent(Double.self, forKey: .keyBorderOpacity) ?? 0
         self.keyboardHeight = try container.decodeIfPresent(Double.self, forKey: .keyboardHeight) ?? 288
         self.keyboardHorizontalInset = try container.decodeIfPresent(Double.self, forKey: .keyboardHorizontalInset) ?? 0
         self.keySpacing = try container.decodeIfPresent(Double.self, forKey: .keySpacing) ?? 0
         self.keyHitExpansion = try container.decodeIfPresent(Double.self, forKey: .keyHitExpansion) ?? 2
         self.keyFontScale = try container.decodeIfPresent(Double.self, forKey: .keyFontScale) ?? 1
         self.hapticStrength = try container.decodeIfPresent(Double.self, forKey: .hapticStrength) ?? 1
-        self.backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.55
+        self.backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.75
         self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 6
     }
 
