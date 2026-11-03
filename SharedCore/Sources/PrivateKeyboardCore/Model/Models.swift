@@ -230,6 +230,18 @@ public struct PredictionContext: Equatable, Sendable {
     }
 }
 
+public enum ScriptPreference: String, Codable, CaseIterable, Sendable {
+    case simplified
+    case traditional
+
+    public var displayName: String {
+        switch self {
+        case .simplified: return "简体"
+        case .traditional: return "繁體"
+        }
+    }
+}
+
 public enum InputLanguage: String, Codable, CaseIterable, Sendable {
     case chinese
     case english

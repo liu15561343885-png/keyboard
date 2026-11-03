@@ -5,6 +5,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
     public var hapticsEnabled: Bool
     public var fuzzy: FuzzyPinyinOptions
     public var lastLanguage: InputLanguage
+    public var script: ScriptPreference
     public var schemaVersion: Int
 
     public init(
@@ -12,13 +13,39 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         hapticsEnabled: Bool = true,
         fuzzy: FuzzyPinyinOptions = .common,
         lastLanguage: InputLanguage = .chinese,
-        schemaVersion: Int = 1
+        script: ScriptPreference = .simplified,
+        schemaVersion: Int = 2
     ) {
         self.soundEnabled = soundEnabled
         self.hapticsEnabled = hapticsEnabled
         self.fuzzy = fuzzy
         self.lastLanguage = lastLanguage
+        self.script = script
         self.schemaVersion = schemaVersion
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case soundEnabled, hapticsEnabled, fuzzy, lastLanguage, script, schemaVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.soundEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? true
+        self.hapticsEnabled = try container.decodeIfPresent(Bool.self, forKey: .hapticsEnabled) ?? true
+        self.fuzzy = try container.decodeIfPresent(FuzzyPinyinOptions.self, forKey: .fuzzy) ?? .common
+        self.lastLanguage = try container.decodeIfPresent(InputLanguage.self, forKey: .lastLanguage) ?? .chinese
+        self.script = try container.decodeIfPresent(ScriptPreference.self, forKey: .script) ?? .simplified
+        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 2
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(soundEnabled, forKey: .soundEnabled)
+        try container.encode(hapticsEnabled, forKey: .hapticsEnabled)
+        try container.encode(fuzzy, forKey: .fuzzy)
+        try container.encode(lastLanguage, forKey: .lastLanguage)
+        try container.encode(script, forKey: .script)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
     }
 }
 

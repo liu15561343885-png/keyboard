@@ -84,6 +84,22 @@ final class PinyinTests: XCTestCase {
         XCTAssertTrue(candidates.contains { $0.text == "中国" })
     }
 
+    func testTraditionalScriptPreference() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let engine = try makeEngine(built)
+        let simplified = try engine.predict(input: "ai", language: .chinese, contextWords: [], limit: 5)
+        let traditional = try engine.predict(
+            input: "ai",
+            language: .chinese,
+            contextWords: [],
+            scriptPreference: .traditional,
+            limit: 5
+        )
+        XCTAssertEqual(simplified.first?.text, "爱")
+        XCTAssertEqual(traditional.first?.text, "愛")
+    }
+
     func testEnglishToChineseCandidate() throws {
         let built = try TestDataset.make()
         defer { built.remove() }

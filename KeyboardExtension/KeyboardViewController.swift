@@ -323,12 +323,14 @@ final class KeyboardViewController: UIInputViewController {
         let context = contextWords
         let currentLanguage = language
         let fuzzy = settings.fuzzy
+        let scriptPreference = settings.script
         predictionQueue.async { [weak self] in
             let result = (try? engine.predict(
                 input: query,
                 language: currentLanguage,
                 contextWords: context,
                 fuzzy: fuzzy,
+                scriptPreference: scriptPreference,
                 limit: 40
             )) ?? []
             DispatchQueue.main.async {

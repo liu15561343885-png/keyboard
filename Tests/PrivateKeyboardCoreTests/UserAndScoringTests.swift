@@ -25,6 +25,19 @@ final class UserAndScoringTests: XCTestCase {
         XCTAssertEqual(reloaded.trackedWordCount, 0)
     }
 
+    func testSettingsMigrationDefaultsToSimplifiedScript() throws {
+        let legacy = """
+        {"soundEnabled":false,"hapticsEnabled":true,"fuzzy":{"zhZ":true,"chC":false,"shS":false,"nL":false,"fH":false,"angAn":false,"engEn":false,"ingIn":false},"lastLanguage":"chinese","schemaVersion":1}
+        """
+        let settings = try JSONDecoder().decode(KeyboardSettings.self, from: Data(legacy.utf8))
+        XCTAssertFalse(settings.soundEnabled)
+        XCTAssertEqual(settings.script, .simplified)
+        XCTAssertEqual(settings.schemaVersion, 1)
+        let encoded = try JSONEncoder().encode(settings)
+        let roundTrip = try JSONDecoder().decode(KeyboardSettings.self, from: encoded)
+        XCTAssertEqual(roundTrip, settings)
+    }
+
     func testExplainableWeightedScoreContainsEveryRequestedSignal() {
         let scorer = WeightedPredictionScorer()
         let features = CandidateFeatures(

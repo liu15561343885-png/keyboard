@@ -31,6 +31,15 @@ struct SettingsView: View {
                         get: { model.settings.hapticsEnabled },
                         set: { model.setHaptics($0) }
                     ))
+                    Picker("字形", selection: Binding(
+                        get: { model.settings.script },
+                        set: { model.setScript($0) }
+                    )) {
+                        ForEach(ScriptPreference.allCases, id: \.self) { script in
+                            Text(script.displayName).tag(script)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
 
                 Section {

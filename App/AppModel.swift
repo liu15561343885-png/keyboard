@@ -68,6 +68,11 @@ final class AppModel: ObservableObject {
         save()
     }
 
+    func setScript(_ script: ScriptPreference) {
+        settings.script = script
+        save()
+    }
+
     func checkForUpdates() {
         Task { await checkAndInstallIfNeeded(automatic: false) }
     }

@@ -48,6 +48,7 @@ public final class PredictionEngine {
         language: InputLanguage,
         contextWords: [String],
         fuzzy: FuzzyPinyinOptions? = nil,
+        scriptPreference: ScriptPreference = .simplified,
         limit: Int = 40
     ) throws -> [InputCandidate] {
         let normalized = PinyinText.normalizeInput(input)
@@ -58,12 +59,20 @@ public final class PredictionEngine {
         let context = PredictionContext(previousWords: contextWords, typedPinyin: normalized, language: language)
 
         func append(seed: CandidateSeed) {
-            let features = features(for: seed, contextWords: contextWords)
+            let displayText: String
+            if seed.kind == .chinese || seed.kind == .composed {
+                displayText = scriptPreference == .traditional && !seed.traditional.isEmpty
+                    ? seed.traditional
+                    : seed.text
+            } else {
+                displayText = seed.text
+            }
+            let features = features(for: seed, displayText: displayText, contextWords: contextWords)
             let breakdown = scorer.score(features: features, context: context)
             let detail = detailText(for: seed, contextWords: contextWords)
             let candidate = InputCandidate(
-                id: seed.entryID.map { "zh-\($0)" } ?? "\(seed.kind.rawValue)-\(seed.text)",
-                text: seed.text,
+                id: seed.entryID.map { "zh-\($0)" } ?? "\(seed.kind.rawValue)-\(displayText)",
+                text: displayText,
                 detail: detail,
                 kind: seed.kind,
                 pinyin: seed.pinyin,
@@ -127,10 +136,16 @@ public final class PredictionEngine {
         return results
     }
 
-    private func features(for seed: CandidateSeed, contextWords: [String]) -> CandidateFeatures {
+    private func features(
+        for seed: CandidateSeed,
+        displayText: String,
+        contextWords: [String]
+    ) -> CandidateFeatures {
         let base = min(1, log1p(Double(seed.frequency)) / maximumBaseLog)
-        let user = userHistory.normalizedFrequency(for: seed.text)
-        let recency = userHistory.recencyScore(for: seed.text)
+        let user = userHistory.normalizedFrequency(for: displayText)
+        let recency = userHistory.recencyScore(for: displayText)
+        // The bundled n-gram model is keyed by simplified text; use the
+        // dictionary form for context scoring even when displaying traditional.
         let lm = languageModel.scores(previousWords: contextWords, candidate: seed.text)
         let pinyinMatch: Double
         switch seed.kind {
