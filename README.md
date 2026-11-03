@@ -48,12 +48,13 @@ swift run core-check Resources/Generated
 python3 scripts/check_artifacts.py
 swift run manifest-tool verify docs/manifest.example.json Resources/UpdatePublicKey.txt
 ./scripts/typecheck_catalyst.sh
+./scripts/build_catalyst_products.sh
 ./scripts/smoke_keyboard_catalyst.sh
 ```
 
 `core-check` 会实际打开内置二进制词库、执行连续拼音切分、候选生成、Core ML 推理、用户词频、签名 manifest 安装与回滚，并打印 Top-1/Top-3/Top-5 与延迟指标。
 
-`typecheck_catalyst.sh` 使用 macOS SDK 内置的 Mac Catalyst UIKit/SwiftUI 对 App 和键盘扩展做类型检查；`smoke_keyboard_catalyst.sh` 进一步在 Catalyst 下实例化键盘视图并检查字母/数字/Emoji 页面与候选控件布局。它们不能替代 iOS SDK 构建，但能在没有 Xcode 时捕获 UIKit/SwiftUI API、类型和视图构建错误。
+`typecheck_catalyst.sh` 使用 macOS SDK 内置的 Mac Catalyst UIKit/SwiftUI 对 App 和键盘扩展做类型检查；`build_catalyst_products.sh` 进一步链接 Host App 可执行文件和 Keyboard Extension dylib；`smoke_keyboard_catalyst.sh` 进一步在 Catalyst 下实例化键盘视图并检查字母/数字/Emoji 页面与候选控件布局。它们不能替代 iOS SDK 构建，但能在没有 Xcode 时捕获 UIKit/SwiftUI API、类型和视图构建错误。
 
 ### 2. 用 Xcode 构建 App
 

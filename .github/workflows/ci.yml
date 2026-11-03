@@ -36,6 +36,7 @@ jobs:
       - name: Catalyst UI smoke checks
         run: |
           ./scripts/typecheck_catalyst.sh
+          ./scripts/build_catalyst_products.sh
           ./scripts/smoke_keyboard_catalyst.sh
 
       - name: Package tests (XCTest)

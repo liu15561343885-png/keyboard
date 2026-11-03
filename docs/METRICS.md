@@ -47,6 +47,7 @@
 | 本地数据备份排除 | 通过 | 用户词频文件与数据集根目录设置 `isExcludedFromBackup` |
 | 数据/配置一致性 | 通过 | `scripts/check_artifacts.py`：哈希、版本、App Group、公钥、manifest 示例 |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
+| Catalyst 产品链接 | 通过 | `scripts/build_catalyst_products.sh`：Host App 可执行文件 + Extension dylib |
 | 长按删除 | 通过 | 删除键存在 `UILongPressGestureRecognizer`，重复计时器实现连续删除 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
 | XCTest 测试方法执行 | 36/36 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
