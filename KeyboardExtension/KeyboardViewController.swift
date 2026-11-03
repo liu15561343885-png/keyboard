@@ -1,6 +1,18 @@
 import PrivateKeyboardCore
 import UIKit
 
+protocol KeyboardTextSink: AnyObject {
+    func insertText(_ text: String)
+    func deleteBackward()
+}
+
+private final class TextDocumentProxySink: KeyboardTextSink {
+    private let proxy: UITextDocumentProxy
+    init(proxy: UITextDocumentProxy) { self.proxy = proxy }
+    func insertText(_ text: String) { proxy.insertText(text) }
+    func deleteBackward() { proxy.deleteBackward() }
+}
+
 final class KeyboardInputView: UIInputView, UIInputViewAudioFeedback {
     var enableInputClicksWhenVisible: Bool { true }
 }
@@ -9,6 +21,14 @@ final class KeyboardViewController: UIInputViewController {
     private let keyboardView = KeyboardView()
     private let predictionQueue = DispatchQueue(label: "com.privatekeyboard.prediction", qos: .userInteractive)
     private let haptic = UIImpactFeedbackGenerator(style: .light)
+
+    /// Test seam: production uses the document proxy; Catalyst input smoke uses
+    /// a recording sink.
+    var textSinkOverride: KeyboardTextSink?
+
+    private var textSink: KeyboardTextSink {
+        textSinkOverride ?? TextDocumentProxySink(proxy: textDocumentProxy)
+    }
 
     private lazy var containerURL: URL = {
         if let url = AppGroup.containerURL() { return url }
@@ -161,7 +181,7 @@ final class KeyboardViewController: UIInputViewController {
         case .emoji(let emoji):
             commitFirstCandidateIfAny()
             englishBuffer = ""
-            textDocumentProxy.insertText(emoji)
+            textSink.insertText(emoji)
             autoShiftIfNeeded()
             refreshCandidates()
         }
@@ -178,14 +198,14 @@ final class KeyboardViewController: UIInputViewController {
                 guard pinyinBuffer.count < 40 else { return }
                 let lower = rawValue.lowercased()
                 pinyinBuffer.append(lower)
-                textDocumentProxy.insertText(lower)
+                textSink.insertText(lower)
                 refreshCandidates()
                 return
             } else {
                 guard englishBuffer.count < 48 else { return }
                 let value = isShifted ? rawValue.uppercased() : rawValue.lowercased()
                 englishBuffer.append(Character(value))
-                textDocumentProxy.insertText(value)
+                textSink.insertText(value)
                 isShifted = false
                 keyboardView.configure(page: page, language: language, shifted: isShifted)
                 refreshCandidates()
@@ -196,7 +216,7 @@ final class KeyboardViewController: UIInputViewController {
         commitFirstCandidateIfAny()
         englishBuffer = ""
         let text = language == .chinese ? smartPunctuation(rawValue) : rawValue
-        textDocumentProxy.insertText(text)
+        textSink.insertText(text)
         autoShiftIfNeeded()
         refreshCandidates()
     }
@@ -204,12 +224,12 @@ final class KeyboardViewController: UIInputViewController {
     private func handleBackspace() {
         if language == .chinese, !pinyinBuffer.isEmpty {
             pinyinBuffer.removeLast()
-            textDocumentProxy.deleteBackward()
+            textSink.deleteBackward()
         } else if language == .english, !englishBuffer.isEmpty {
             englishBuffer.removeLast()
-            textDocumentProxy.deleteBackward()
+            textSink.deleteBackward()
         } else {
-            textDocumentProxy.deleteBackward()
+            textSink.deleteBackward()
         }
         refreshCandidates()
     }
@@ -220,13 +240,13 @@ final class KeyboardViewController: UIInputViewController {
                 return
             }
             pinyinBuffer = ""
-            textDocumentProxy.insertText(" ")
+            textSink.insertText(" ")
         } else {
             if language == .english {
                 englishBuffer = ""
                 isShifted = true
             }
-            textDocumentProxy.insertText(" ")
+            textSink.insertText(" ")
         }
         autoShiftIfNeeded()
         refreshCandidates()
@@ -238,7 +258,7 @@ final class KeyboardViewController: UIInputViewController {
             _ = commitFirstCandidateIfAny()
         }
         englishBuffer = ""
-        textDocumentProxy.insertText("\n")
+        textSink.insertText("\n")
         autoShiftIfNeeded()
         refreshCandidates()
     }
@@ -287,7 +307,7 @@ final class KeyboardViewController: UIInputViewController {
     private func deletePinyinBuffer() {
         let count = pinyinBuffer.utf16.count
         guard count > 0 else { return }
-        for _ in 0..<count { textDocumentProxy.deleteBackward() }
+        for _ in 0..<count { textSink.deleteBackward() }
         pinyinBuffer = ""
     }
 
@@ -313,8 +333,8 @@ final class KeyboardViewController: UIInputViewController {
             englishBuffer = ""
         }
         if candidate.kind != .raw {
-            for _ in 0..<deletionCount { textDocumentProxy.deleteBackward() }
-            textDocumentProxy.insertText(candidate.text)
+            for _ in 0..<deletionCount { textSink.deleteBackward() }
+            textSink.insertText(candidate.text)
             userHistory.recordSelection(of: candidate.text)
             if candidate.kind == .chinese || candidate.kind == .composed || candidate.kind == .custom {
                 contextWords.append(candidate.text)

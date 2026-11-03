@@ -127,4 +127,34 @@ let controllerKeys = allSubviews(controller.view).filter { $0 is KeyButton }.cou
 print("controller height:", controller.view.bounds.height, "controller keys:", controllerKeys)
 precondition(abs(controller.view.bounds.height - 288) < 0.5, "unexpected controller height")
 precondition(controllerKeys == 34, "unexpected controller key count")
+final class RecordingTextSink: KeyboardTextSink {
+    var text = ""
+    func insertText(_ value: String) { text += value }
+    func deleteBackward() { if !text.isEmpty { text.removeLast() } }
+}
+
+let liveSink = RecordingTextSink()
+controller.textSinkOverride = liveSink
+let controllerKeyboard = allSubviews(controller.view).compactMap { $0 as? KeyboardView }.first
+precondition(controllerKeyboard != nil, "controller keyboard view missing")
+
+func tapControllerKey(_ label: String) {
+    guard let keyboardView = controllerKeyboard,
+          let key = allSubviews(keyboardView).compactMap({ $0 as? KeyButton }).first(where: { button in
+              button.subviews.compactMap { ($0 as? UILabel)?.text }.contains(label)
+          })
+    else { preconditionFailure("controller key not found: \(label)") }
+    _ = keyboardView.perform(NSSelectorFromString("keyTapped:"), with: key)
+}
+
+for label in ["q", "w", "e", "r", "t"] {
+    tapControllerKey(label)
+}
+print("typed composition:", liveSink.text)
+precondition(liveSink.text == "qwert", "unexpected typed composition")
+tapControllerKey("⌫")
+precondition(liveSink.text == "qwer", "backspace did not delete composition")
+tapControllerKey("空格")
+print("after space:", "\(liveSink.text)")
+precondition(liveSink.text == "qwer ", "space did not commit/clear composition")
 print("CATALYST KEYBOARD VIEW SMOKE PASSED")
