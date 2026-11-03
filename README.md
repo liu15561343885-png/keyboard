@@ -1,5 +1,7 @@
 # PrivateKeyboard
 
+GitHub: https://github.com/liu15561343885-png/keyboard
+
 一个完全离线的 iOS 中文输入法工程：SwiftUI 主 App、UIKit 键盘扩展、本地拼音引擎、本地中英双向词典、二元/三元语言模型、Core ML 微型候选排序，以及带 SHA-256 + Ed25519 校验的词库更新链路。
 
 > **当前状态：Alpha 工程预览，不是“可日常使用”的版本。**
