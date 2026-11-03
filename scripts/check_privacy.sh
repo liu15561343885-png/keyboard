@@ -43,12 +43,12 @@ echo "privacy checks passed"
 
 # Apple privacy manifest must be present in both the app and the extension.
 python3 - <<'PY'
-import json
+import plistlib
 import re
 import sys
 from pathlib import Path
 
-manifest = json.loads(Path("Resources/PrivacyInfo.xcprivacy").read_text())
+manifest = plistlib.loads(Path("Resources/PrivacyInfo.xcprivacy").read_bytes())
 if manifest.get("NSPrivacyTracking") is not False:
     print("privacy manifest must declare NSPrivacyTracking=false", file=sys.stderr)
     raise SystemExit(1)

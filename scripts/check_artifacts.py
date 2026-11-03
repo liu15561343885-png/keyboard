@@ -99,7 +99,11 @@ def main() -> int:
         elif path.stat().st_size != item.get("size") or sha256(path) != item.get("sha256"):
             fail(f"example manifest hash/size mismatch: {item.get('name')}")
 
-    privacy = load_json(ROOT / "Resources" / "PrivacyInfo.xcprivacy")
+    try:
+        privacy = plistlib.loads((ROOT / "Resources" / "PrivacyInfo.xcprivacy").read_bytes())
+    except Exception as exc:
+        fail(f"cannot read privacy manifest: {exc}")
+        privacy = {}
     if privacy.get("NSPrivacyTracking") is not False or privacy.get("NSPrivacyCollectedDataTypes") != []:
         fail("privacy manifest must declare no tracking and no collected data")
 
