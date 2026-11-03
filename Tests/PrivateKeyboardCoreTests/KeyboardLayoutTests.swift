@@ -46,20 +46,7 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertEqual(symbols[0].count, 10)
         XCTAssertEqual(symbols[1].count, 10)
         XCTAssertTrue(symbols.flatMap { $0 }.contains { $0.action == .page(.numbers) })
-        XCTAssertTrue(symbols.flatMap { $0 }.contains { $0.action == .page(.emoji) })
     }
 
-    func testEmojiLayout() {
-        let rows = KeyboardLayout.rows(page: .emoji, language: .chinese, shifted: false)
-        XCTAssertEqual(rows.count, 5)
-        let emojiKeys = rows.prefix(4).flatMap { $0 }
-        XCTAssertEqual(emojiKeys.count, 32)
-        XCTAssertTrue(emojiKeys.allSatisfy {
-            if case .emoji = $0.action { return true }
-            return false
-        })
-        XCTAssertTrue(rows[4].contains { $0.action == .nextKeyboard })
-        XCTAssertTrue(rows[4].contains { $0.action == .space })
-        XCTAssertTrue(rows[4].contains { $0.action == .returnKey })
-    }
+
 }

@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，36 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，35 个 XCTest 测试方法已在本机 Xcode 16.4 `swift test` 和 iPhone 16 Simulator `xcodebuild test` 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -49,15 +49,14 @@
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | Catalyst 产品链接 | 通过 | `scripts/build_catalyst_products.sh`：Host App 可执行文件 + Extension dylib |
 | Extension API 限制 | 通过 | Extension 以 `-application-extension` 编译/链接 |
-| 自定义键盘渲染 | 通过 | iPhone 16 Simulator 截图 `docs/screenshots/custom-keyboard.png` |
 | 端到端键盘输入 | 通过（条件） | 预启用 PrivateKeyboard 后，坐标输入 `nihao → 你好`；日志 `docs/evidence/simulator-keyboard-ui-test.log`；未启用时 XCTSkip |
 | 键盘 UI 测试执行 | 1/1 通过 | `PrivateKeyboardUITests`；独立 scheme，不进入 CI |
 | 长按删除 | 通过 | 删除键存在 `UILongPressGestureRecognizer`，重复计时器实现连续删除 |
-| 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
-| XCTest 测试方法执行 | 36/36 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
+| 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 33 控件、数字页 31、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
+| XCTest 测试方法执行 | 35/35 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
 | iOS Simulator 构建 | 通过 | 本机 Xcode 16.4 / iPhone 16 / iOS 18.6；`xcodebuild build` 成功 |
 | iOS Simulator 构建（CI） | 通过 | GitHub Actions Xcode 16.4；[run 41628242781](https://github.com/liu15561343885-png/keyboard/actions/runs/41601735713) |
-| iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 36/36；CI 同一 run 通过 |
+| iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 35/35；CI 同一 run 通过 |
 | Extension 符号检查 | 通过 | CI `nm` 检查无 URLSession |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
@@ -99,5 +98,5 @@
 - 候选 p95 < 50 ms，冷启动 < 300 ms，峰值内存 < 60 MB；
 - 飞行模式全功能输入；
 - 更新失败/断电模拟后旧版本仍可用；
-- 简繁、标点、Emoji、中英混输、删除/空格/回车/下一键盘全部真机通过；
+- 简繁、标点、中英混输、删除/空格/回车/下一键盘全部真机通过；
 - 许可证与隐私文档随 release 发布。

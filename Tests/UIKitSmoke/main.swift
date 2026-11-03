@@ -11,19 +11,13 @@ keyboard.frame = CGRect(x: 0, y: 0, width: 393, height: 288)
 keyboard.layoutIfNeeded()
 let letterKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("letter page keys:", letterKeys)
-precondition(letterKeys == 34, "expected 34 key controls, got \(letterKeys)")
+precondition(letterKeys == 33, "expected 33 key controls, got \(letterKeys)")
 
 keyboard.configure(page: .numbers, language: .chinese, shifted: false, force: true)
 keyboard.layoutIfNeeded()
 let numberKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("number page keys:", numberKeys)
-precondition(numberKeys == 32, "expected 32 key controls, got \(numberKeys)")
-
-keyboard.configure(page: .emoji, language: .chinese, shifted: false, force: true)
-keyboard.layoutIfNeeded()
-let emojiKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
-print("emoji page keys:", emojiKeys)
-precondition(emojiKeys == 37, "expected 37 key controls, got \(emojiKeys)")
+precondition(numberKeys == 31, "expected 31 key controls, got \(numberKeys)")
 
 keyboard.configure(page: .letters, language: .chinese, shifted: false, force: true)
 keyboard.layoutIfNeeded()
@@ -136,7 +130,7 @@ controller.view.layoutIfNeeded()
 let controllerKeys = allSubviews(controller.view).filter { $0 is KeyButton }.count
 print("controller height:", controller.view.bounds.height, "controller keys:", controllerKeys)
 precondition(abs(controller.view.bounds.height - 288) < 0.5, "unexpected controller height")
-precondition(controllerKeys == 34, "unexpected controller key count")
+precondition(controllerKeys == 33, "unexpected controller key count")
 final class RecordingTextSink: KeyboardTextSink {
     var text = ""
     func insertText(_ value: String) { text += value }

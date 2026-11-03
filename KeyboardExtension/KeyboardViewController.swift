@@ -178,12 +178,6 @@ final class KeyboardViewController: UIInputViewController {
         case .page(let nextPage):
             page = nextPage
             keyboardView.configure(page: page, language: language, shifted: isShifted)
-        case .emoji(let emoji):
-            commitFirstCandidateIfAny()
-            englishBuffer = ""
-            textSink.insertText(emoji)
-            autoShiftIfNeeded()
-            refreshCandidates()
         }
     }
 

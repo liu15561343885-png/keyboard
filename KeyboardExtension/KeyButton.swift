@@ -4,6 +4,7 @@ import UIKit
 final class KeyButton: UIControl {
     let action: KeyAction
     private let label = UILabel()
+    private let icon = UIImageView()
     private let style: KeyStyle
     private let weight: CGFloat
 
@@ -23,21 +24,36 @@ final class KeyButton: UIControl {
         layer.shadowOffset = CGSize(width: 0, height: 1)
         isAccessibilityElement = true
         accessibilityTraits = .button
-        accessibilityLabel = spec.label
-        accessibilityIdentifier = "key-\(spec.label)"
+        accessibilityIdentifier = Self.identifier(for: spec)
+        accessibilityLabel = Self.accessibilityLabel(for: spec)
 
-        label.text = spec.label
-        label.textAlignment = .center
-        label.adjustsFontSizeToFitWidth = true
-        label.minimumScaleFactor = 0.65
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.isUserInteractionEnabled = false
-        addSubview(label)
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
+        if let iconName = Self.iconName(for: spec) {
+            label.isHidden = true
+            icon.image = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
+            icon.contentMode = .scaleAspectFit
+            icon.translatesAutoresizingMaskIntoConstraints = false
+            icon.isUserInteractionEnabled = false
+            addSubview(icon)
+            NSLayoutConstraint.activate([
+                icon.centerXAnchor.constraint(equalTo: centerXAnchor),
+                icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+                icon.widthAnchor.constraint(equalToConstant: 24),
+                icon.heightAnchor.constraint(equalToConstant: 24)
+            ])
+        } else {
+            label.text = spec.label
+            label.textAlignment = .center
+            label.adjustsFontSizeToFitWidth = true
+            label.minimumScaleFactor = 0.65
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.isUserInteractionEnabled = false
+            addSubview(label)
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+                label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
+                label.centerYAnchor.constraint(equalTo: centerYAnchor)
+            ])
+        }
         applyStyle()
     }
 
@@ -68,15 +84,37 @@ final class KeyButton: UIControl {
         switch style {
         case .letter:
             return KeyboardTheme.key
-        case .function, .emoji:
+        case .function:
             return KeyboardTheme.functionKey
         case .accent:
             return KeyboardTheme.accent
         }
     }
 
+    private static func iconName(for spec: KeySpec) -> String? {
+        switch spec.action {
+        case .nextKeyboard: return "globe"
+        default: return nil
+        }
+    }
+
+    private static func identifier(for spec: KeySpec) -> String {
+        switch spec.action {
+        case .nextKeyboard: return "key-nextKeyboard"
+        default: return "key-\(spec.label)"
+        }
+    }
+
+    private static func accessibilityLabel(for spec: KeySpec) -> String {
+        switch spec.action {
+        case .nextKeyboard: return "下一个键盘"
+        default: return spec.label
+        }
+    }
+
     private func applyStyle() {
         backgroundColor = normalBackground
+        icon.tintColor = KeyboardTheme.keyText
         switch style {
         case .letter:
             label.textColor = KeyboardTheme.keyText
@@ -87,9 +125,6 @@ final class KeyButton: UIControl {
         case .accent:
             label.textColor = .white
             label.font = KeyboardTheme.functionFont
-        case .emoji:
-            label.textColor = KeyboardTheme.keyText
-            label.font = UIFont.systemFont(ofSize: 25)
         }
     }
 }

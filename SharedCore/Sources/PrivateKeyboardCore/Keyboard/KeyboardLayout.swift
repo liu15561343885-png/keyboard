@@ -4,7 +4,6 @@ public enum KeyboardPage: Equatable {
     case letters
     case numbers
     case symbols
-    case emoji
 }
 
 public enum KeyAction: Equatable {
@@ -16,14 +15,12 @@ public enum KeyAction: Equatable {
     case nextKeyboard
     case toggleLanguage
     case page(KeyboardPage)
-    case emoji(String)
 }
 
 public enum KeyStyle: Equatable {
     case letter
     case function
     case accent
-    case emoji
 }
 
 public struct KeySpec: Equatable {
@@ -41,13 +38,6 @@ public struct KeySpec: Equatable {
 }
 
 public enum KeyboardLayout {
-    private static let emojiRows: [[String]] = [
-        ["😀", "😄", "😁", "😂", "🥹", "😊", "😍", "🥰"],
-        ["😎", "🤔", "😅", "😭", "😡", "👍", "👏", "🙏"],
-        ["❤️", "🔥", "✨", "🎉", "💯", "👌", "🤝", "💪"],
-        ["🍜", "☕️", "🌧️", "🌙", "🚗", "🏠", "📱", "💻"]
-    ]
-
     public static func rows(page: KeyboardPage, language: InputLanguage, shifted: Bool) -> [[KeySpec]] {
         switch page {
         case .letters:
@@ -56,9 +46,6 @@ public enum KeyboardLayout {
             return numberRows(language: language)
         case .symbols:
             return symbolRows(language: language)
-        case .emoji:
-            return emojiRows.map { row in row.map { KeySpec($0, .emoji($0), style: .emoji) } }
-                + [bottomRow(page: page, language: language)]
         }
     }
 
@@ -113,17 +100,13 @@ public enum KeyboardLayout {
         switch page {
         case .letters:
             left = KeySpec("123", .page(.numbers), style: .function)
-        case .numbers, .symbols, .emoji:
+        case .numbers, .symbols:
             left = KeySpec("ABC", .page(.letters), style: .function)
         }
         var keys: [KeySpec] = [
             left,
-            KeySpec("🌐", .nextKeyboard, style: .function, weight: 1.0),
-            KeySpec("😊", .page(.emoji), style: .function, weight: 0.9)
+            KeySpec("", .nextKeyboard, style: .function, weight: 1.0)
         ]
-        if page == .emoji {
-            keys.removeLast()
-        }
         keys.append(KeySpec(language == .chinese ? "中" : "EN", .toggleLanguage, style: .function, weight: 1.05))
         keys.append(KeySpec("空格", .space, style: .letter, weight: 4.4))
         keys.append(KeySpec("换行", .returnKey, style: .accent, weight: 1.8))
