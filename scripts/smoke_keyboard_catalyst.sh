@@ -25,6 +25,7 @@ swiftc "${TARGET[@]}" -I "$WORK" \
   KeyboardExtension/KeyButton.swift \
   KeyboardExtension/CandidateBarView.swift \
   KeyboardExtension/KeyboardView.swift \
+  KeyboardExtension/KeyboardViewController.swift \
   Tests/UIKitSmoke/main.swift \
   "$WORK/libPrivateKeyboardCore.a" \
   -o "$WORK/keyboard-smoke"

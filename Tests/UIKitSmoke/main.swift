@@ -89,4 +89,13 @@ if let cellControl, let bar = allSubviews(keyboard).compactMap({ $0 as? Candidat
 }
 precondition(selectedCandidate?.text == "你好", "candidate tap did not select the expected candidate")
 print("key action wiring: q, 123, candidate tap")
+
+let controller = KeyboardViewController()
+controller.loadViewIfNeeded()
+controller.view.frame = CGRect(x: 0, y: 0, width: 375, height: 288)
+controller.view.layoutIfNeeded()
+let controllerKeys = allSubviews(controller.view).filter { $0 is KeyButton }.count
+print("controller height:", controller.view.bounds.height, "controller keys:", controllerKeys)
+precondition(abs(controller.view.bounds.height - 288) < 0.5, "unexpected controller height")
+precondition(controllerKeys == 34, "unexpected controller key count")
 print("CATALYST KEYBOARD VIEW SMOKE PASSED")
