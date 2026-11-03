@@ -30,6 +30,25 @@ for expected in ["q", "123", "空格", "换行"] {
     precondition(labelsBefore.contains(expected), "missing key label \(expected)")
 }
 
+func keyButton(withLabel label: String) -> KeyButton? {
+    allSubviews(keyboard).compactMap { $0 as? KeyButton }.first { button in
+        button.subviews.compactMap { ($0 as? UILabel)?.text }.contains(label)
+    }
+}
+
+var observedActions: [KeyAction] = []
+keyboard.onAction = { observedActions.append($0) }
+precondition(keyButton(withLabel: "q") != nil, "q key not found")
+if let q = keyButton(withLabel: "q") {
+    _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: q)
+}
+precondition(observedActions == [.character("q")], "q tap did not emit character action")
+precondition(keyButton(withLabel: "123") != nil, "123 key not found")
+if let pageKey = keyButton(withLabel: "123") {
+    _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: pageKey)
+}
+precondition(observedActions.last == .page(.numbers), "123 tap did not emit page action")
+
 let lightBackground = KeyboardTheme.background.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
 let darkBackground = KeyboardTheme.background.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
 precondition(!lightBackground.isEqual(darkBackground), "dark mode background did not resolve differently")
@@ -60,4 +79,14 @@ if let bar = allSubviews(keyboard).compactMap({ $0 as? CandidateBarView }).first
     preconditionFailure("candidate bar not found")
 }
 print("dark background: \(lightBackground) vs \(darkBackground)")
+
+var selectedCandidate: InputCandidate?
+keyboard.onSelectCandidate = { selectedCandidate = $0 }
+let cellControl = candidateCells.compactMap { $0 as? UIControl }.first
+precondition(cellControl != nil, "candidate control missing")
+if let cellControl, let bar = allSubviews(keyboard).compactMap({ $0 as? CandidateBarView }).first {
+    _ = bar.perform(NSSelectorFromString("cellTapped:"), with: cellControl)
+}
+precondition(selectedCandidate?.text == "你好", "candidate tap did not select the expected candidate")
+print("key action wiring: q, 123, candidate tap")
 print("CATALYST KEYBOARD VIEW SMOKE PASSED")

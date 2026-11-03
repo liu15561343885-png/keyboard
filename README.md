@@ -221,7 +221,7 @@ swift run core-check Resources/Generated
 
 - 27 个 XCTest 测试方法：**27/27 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
-- 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏、深色模式颜色解析）
+- 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏、深色模式颜色解析、按键/候选回调）
 - 92 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
 - 候选平均延迟 **5.69 ms**，p95 **10.78 ms**（macOS Release；真机待测）
 - Core ML：`Core ML micro-linear-1 · f1ec5f0b46`
