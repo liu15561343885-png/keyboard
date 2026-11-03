@@ -110,6 +110,58 @@ final class UpdateInstallerTests: XCTestCase {
         XCTAssertNotNil(installer.paths())
     }
 
+    func testModelFileVersionIsInstalledAndRolledBack() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let container = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PKContainer-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: container) }
+
+        let keys = try TestManifest.makeKeyPair()
+        let modelURL = built.directory.appendingPathComponent("candidate_scorer.mlmodel")
+        let modelBytes = Data("test-model-bytes".utf8)
+        try modelBytes.write(to: modelURL)
+        var manifest = try TestManifest.make(version: "3.0.0", built: built, privateKey: keys.privateKey)
+        manifest.files.append(
+            ManifestFile(
+                name: DatasetFile.model.rawValue,
+                kind: DatasetFile.model.kind,
+                url: "https://example.invalid/candidate_scorer.mlmodel",
+                size: Int64(modelBytes.count),
+                sha256: FileDigest.sha256Hex(of: modelBytes),
+                modelVersion: "test-model-1"
+            )
+        )
+        try Ed25519ManifestSigner.sign(manifest: &manifest, privateKeyBase64: keys.privateKey)
+        var downloads = downloadedFiles(from: built)
+        downloads[DatasetFile.model.rawValue] = modelURL
+
+        let installer = DatasetInstaller(containerURL: container)
+        let state = try installer.install(
+            manifest: manifest,
+            downloadedFiles: downloads,
+            publicKeyBase64: keys.publicKey,
+            appVersion: "1.0.0",
+            osVersion: "17.0"
+        )
+        XCTAssertEqual(state.current?.modelVersion, "test-model-1")
+        XCTAssertNotNil(installer.paths()?.model)
+
+        let next = try TestManifest.make(version: "3.0.1", built: built, privateKey: keys.privateKey)
+        _ = try installer.install(
+            manifest: next,
+            downloadedFiles: downloadedFiles(from: built),
+            publicKeyBase64: keys.publicKey,
+            appVersion: "1.0.0",
+            osVersion: "17.0"
+        )
+        let rolledBack = try installer.rollback()
+        XCTAssertEqual(rolledBack.current?.dataVersion, "3.0.0")
+        XCTAssertEqual(rolledBack.current?.modelVersion, "test-model-1")
+        XCTAssertNotNil(installer.paths(for: rolledBack)?.model)
+    }
+
     func testManifestRejectsPathTraversal() throws {
         let built = try TestDataset.make()
         defer { built.remove() }
