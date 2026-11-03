@@ -134,7 +134,7 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         settings = settingsStore.load()
-        if AppGroup.containerURL() == nil, let bridged = SettingsPasteboard.read() {
+        if let bridged = SettingsPasteboard.read() {
             settings = bridged
         }
         applyAppearance()
