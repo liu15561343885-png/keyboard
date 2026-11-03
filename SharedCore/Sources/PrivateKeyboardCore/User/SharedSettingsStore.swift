@@ -6,6 +6,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
     public var fuzzy: FuzzyPinyinOptions
     public var lastLanguage: InputLanguage
     public var script: ScriptPreference
+    public var nineKeyEnabled: Bool
     public var schemaVersion: Int
 
     public init(
@@ -14,18 +15,20 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         fuzzy: FuzzyPinyinOptions = .common,
         lastLanguage: InputLanguage = .chinese,
         script: ScriptPreference = .simplified,
-        schemaVersion: Int = 2
+        nineKeyEnabled: Bool = false,
+        schemaVersion: Int = 3
     ) {
         self.soundEnabled = soundEnabled
         self.hapticsEnabled = hapticsEnabled
         self.fuzzy = fuzzy
         self.lastLanguage = lastLanguage
         self.script = script
+        self.nineKeyEnabled = nineKeyEnabled
         self.schemaVersion = schemaVersion
     }
 
     private enum CodingKeys: String, CodingKey {
-        case soundEnabled, hapticsEnabled, fuzzy, lastLanguage, script, schemaVersion
+        case soundEnabled, hapticsEnabled, fuzzy, lastLanguage, script, nineKeyEnabled, schemaVersion
     }
 
     public init(from decoder: Decoder) throws {
@@ -35,7 +38,8 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         self.fuzzy = try container.decodeIfPresent(FuzzyPinyinOptions.self, forKey: .fuzzy) ?? .common
         self.lastLanguage = try container.decodeIfPresent(InputLanguage.self, forKey: .lastLanguage) ?? .chinese
         self.script = try container.decodeIfPresent(ScriptPreference.self, forKey: .script) ?? .simplified
-        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 2
+        self.nineKeyEnabled = try container.decodeIfPresent(Bool.self, forKey: .nineKeyEnabled) ?? false
+        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 3
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -45,6 +49,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         try container.encode(fuzzy, forKey: .fuzzy)
         try container.encode(lastLanguage, forKey: .lastLanguage)
         try container.encode(script, forKey: .script)
+        try container.encode(nineKeyEnabled, forKey: .nineKeyEnabled)
         try container.encode(schemaVersion, forKey: .schemaVersion)
     }
 }

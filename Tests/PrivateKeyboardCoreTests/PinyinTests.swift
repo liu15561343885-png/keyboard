@@ -84,6 +84,16 @@ final class PinyinTests: XCTestCase {
         XCTAssertTrue(candidates.contains { $0.text == "中国" })
     }
 
+    func testT9DecoderMapsNihao() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let engine = try makeEngine(built)
+        let keys = T9PinyinDecoder(inventory: engine.inventory).keys(for: "64426")
+        XCTAssertTrue(keys.contains("ni hao"), "decoded keys: \(keys)")
+        let candidates = try engine.predictT9(digits: "64426", contextWords: [], limit: 10)
+        XCTAssertTrue(candidates.contains { $0.text == "你好" }, "T9 candidates: \(candidates.map(\.text))")
+    }
+
     func testTraditionalScriptPreference() throws {
         let built = try TestDataset.make()
         defer { built.remove() }

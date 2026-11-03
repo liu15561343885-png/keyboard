@@ -170,6 +170,40 @@ public final class PredictionEngine {
         return results
     }
 
+    public func predictT9(
+        digits: String,
+        contextWords: [String],
+        fuzzy: FuzzyPinyinOptions? = nil,
+        scriptPreference: ScriptPreference = .simplified,
+        limit: Int = 40
+    ) throws -> [InputCandidate] {
+        let keys = T9PinyinDecoder(inventory: inventory).keys(for: digits, limit: 12)
+        guard !keys.isEmpty else { return [] }
+        var merged: [String: (candidate: InputCandidate, total: Double)] = [:]
+        for key in keys {
+            let candidates = try predict(
+                input: key,
+                language: .chinese,
+                contextWords: contextWords,
+                fuzzy: fuzzy,
+                scriptPreference: scriptPreference,
+                limit: min(limit, 12)
+            )
+            for candidate in candidates {
+                let total = candidate.breakdown?.total ?? 0
+                if let existing = merged[candidate.id], existing.total >= total { continue }
+                merged[candidate.id] = (candidate, total)
+            }
+        }
+        return merged.values
+            .sorted { lhs, rhs in
+                if abs(lhs.total - rhs.total) > 0.0001 { return lhs.total > rhs.total }
+                return lhs.candidate.text < rhs.candidate.text
+            }
+            .prefix(limit)
+            .map(\.candidate)
+    }
+
     private func features(
         for seed: CandidateSeed,
         displayText: String,

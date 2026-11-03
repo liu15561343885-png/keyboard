@@ -16,6 +16,7 @@ final class KeyboardView: UIView {
     private var isShifted = false
     private var capsLocked = false
     private var returnKeyLabel = "换行"
+    private var nineKey = false
     private var deleteTimer: Timer?
     private var lastLongPressDeleteEnd: TimeInterval = 0
     private var lastCursorMoveEnd: TimeInterval = 0
@@ -113,10 +114,12 @@ final class KeyboardView: UIView {
         shifted: Bool,
         capsLocked: Bool = false,
         returnKeyLabel: String = "换行",
+        nineKey: Bool = false,
         force: Bool = false
     ) {
         guard force || page != currentPage || language != currentLanguage || shifted != isShifted
-                || capsLocked != self.capsLocked || returnKeyLabel != self.returnKeyLabel else { return }
+                || capsLocked != self.capsLocked || returnKeyLabel != self.returnKeyLabel
+                || nineKey != self.nineKey else { return }
         if page != currentPage || language != currentLanguage {
             collapseCandidates()
         }
@@ -125,6 +128,7 @@ final class KeyboardView: UIView {
         isShifted = shifted
         self.capsLocked = capsLocked
         self.returnKeyLabel = returnKeyLabel
+        self.nineKey = nineKey
         rebuildKeys()
     }
 
@@ -144,7 +148,8 @@ final class KeyboardView: UIView {
             language: currentLanguage,
             shifted: isShifted,
             capsLocked: capsLocked,
-            returnKeyLabel: returnKeyLabel
+            returnKeyLabel: returnKeyLabel,
+            nineKey: nineKey
         )
         for specs in rows {
             let row = UIStackView()

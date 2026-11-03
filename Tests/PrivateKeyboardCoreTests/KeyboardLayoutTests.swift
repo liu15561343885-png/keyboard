@@ -35,6 +35,18 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertTrue(upper[2].contains { $0.action == .shift && $0.label == "⬆︎" })
     }
 
+    func testNineKeyLayout() {
+        let rows = KeyboardLayout.rows(page: .letters, language: .chinese, shifted: false, nineKey: true)
+        XCTAssertEqual(rows.count, 5)
+        let labels = rows.flatMap { $0 }.map(\.label)
+        XCTAssertTrue(labels.contains("2 ABC"))
+        XCTAssertTrue(labels.contains("9 WXYZ"))
+        XCTAssertTrue(labels.contains("，"))
+        XCTAssertTrue(labels.contains("。"))
+        XCTAssertTrue(rows.last?.contains { $0.action == .toggleNineKey && $0.label == "26键" } == true)
+        XCTAssertEqual(rows.prefix(4).flatMap { $0 }.filter { $0.action == .backspace }.count, 1)
+    }
+
     func testPunctuationPage() {
         let rows = KeyboardLayout.rows(page: .punctuation, language: .chinese, shifted: false)
         XCTAssertEqual(rows.count, 4)

@@ -48,9 +48,11 @@ final class KeyboardViewController: UIInputViewController {
     private var predictionGeneration = 0
     private var candidates: [InputCandidate] = []
     private var pinyinBuffer = ""
+    private var t9Buffer = ""
     private var englishBuffer = ""
     private var contextWords: [String] = []
     private var language: InputLanguage = .chinese
+    private var nineKeyEnabled = false
     private var page: KeyboardPage = .letters
     private var isShifted = false
     private var shiftLocked = false
@@ -99,6 +101,7 @@ final class KeyboardViewController: UIInputViewController {
         haptic.prepare()
         settings = settingsStore.load()
         language = settings.lastLanguage
+        nineKeyEnabled = settings.nineKeyEnabled
         isShifted = language == .english
         updateReturnKeyLabel()
         refreshKeyboard(force: true)
@@ -112,6 +115,7 @@ final class KeyboardViewController: UIInputViewController {
         userLexicon.reload()
         if settings.lastLanguage != language {
             language = settings.lastLanguage
+            nineKeyEnabled = settings.nineKeyEnabled
             shiftLocked = false
             isShifted = language == .english
         }
@@ -201,6 +205,8 @@ final class KeyboardViewController: UIInputViewController {
             advanceToNextInputMode()
         case .toggleLanguage:
             toggleLanguage()
+        case .toggleNineKey:
+            toggleNineKey()
         case .page(let nextPage):
             page = nextPage
             refreshKeyboard(force: true)
@@ -213,7 +219,17 @@ final class KeyboardViewController: UIInputViewController {
             CharacterSet.letters.contains($0) && $0.isASCII
         }
 
-        if page == .letters, isLetter {
+        if page == .letters, language == .chinese, nineKeyEnabled,
+           rawValue.count == 1, "23456789".contains(rawValue) {
+            guard t9Buffer.count < 24 else { return }
+            t9Buffer.append(rawValue)
+            textSink.insertText(rawValue)
+            startCompositionMonitor()
+            refreshCandidates()
+            return
+        }
+
+        if page == .letters, isLetter, !(language == .chinese && nineKeyEnabled) {
             if language == .chinese {
                 guard pinyinBuffer.count < 40 else { return }
                 let lower = rawValue.lowercased()
@@ -236,6 +252,9 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         commitFirstCandidateIfAny()
+        if language == .chinese, nineKeyEnabled {
+            t9Buffer = ""
+        }
         englishBuffer = ""
         let text = language == .chinese ? smartPunctuation(rawValue) : rawValue
         textSink.insertText(text)
@@ -244,7 +263,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func handleBackspace() {
-        if language == .chinese, !pinyinBuffer.isEmpty {
+        if language == .chinese, nineKeyEnabled, !t9Buffer.isEmpty {
+            t9Buffer.removeLast()
+            textSink.deleteBackward()
+        } else if language == .chinese, !pinyinBuffer.isEmpty {
             pinyinBuffer.removeLast()
             textSink.deleteBackward()
         } else if language == .english, !englishBuffer.isEmpty {
@@ -253,14 +275,18 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             textSink.deleteBackward()
         }
-        if pinyinBuffer.isEmpty && englishBuffer.isEmpty {
+        if pinyinBuffer.isEmpty && t9Buffer.isEmpty && englishBuffer.isEmpty {
             stopCompositionMonitor()
         }
         refreshCandidates()
     }
 
     private func handleSpace() {
-        if language == .chinese, !pinyinBuffer.isEmpty {
+        if language == .chinese, nineKeyEnabled, !t9Buffer.isEmpty {
+            if commitFirstCandidateIfAny() { return }
+            t9Buffer = ""
+            textSink.insertText(" ")
+        } else if language == .chinese, !pinyinBuffer.isEmpty {
             if commitFirstCandidateIfAny() {
                 return
             }
@@ -279,9 +305,13 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func handleReturn() {
-        if language == .chinese, !pinyinBuffer.isEmpty {
+        if language == .chinese, nineKeyEnabled, !t9Buffer.isEmpty {
+            let raw = t9Buffer
+            deleteCompositionBuffer()
+            textSink.insertText(raw)
+        } else if language == .chinese, !pinyinBuffer.isEmpty {
             let raw = pinyinBuffer
-            deletePinyinBuffer()
+            deleteCompositionBuffer()
             textSink.insertText(raw)
         }
         englishBuffer = ""
@@ -291,18 +321,29 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func toggleLanguage() {
-        if language == .chinese, !pinyinBuffer.isEmpty {
+        if language == .chinese, (nineKeyEnabled ? !t9Buffer.isEmpty : !pinyinBuffer.isEmpty) {
             if !commitFirstCandidateIfAny() {
-                deletePinyinBuffer()
+                deleteCompositionBuffer()
             }
         }
         englishBuffer = ""
         language = language == .chinese ? .english : .chinese
         page = .letters
+        t9Buffer = ""
         shiftLocked = false
         isShifted = language == .english
         settings.lastLanguage = language
         settingsStore.save(settings)
+        refreshKeyboard(force: true)
+        refreshCandidates()
+    }
+
+    private func toggleNineKey() {
+        deleteCompositionBuffer()
+        nineKeyEnabled.toggle()
+        settings.nineKeyEnabled = nineKeyEnabled
+        settingsStore.save(settings)
+        page = .letters
         refreshKeyboard(force: true)
         refreshCandidates()
     }
@@ -332,11 +373,19 @@ final class KeyboardViewController: UIInputViewController {
         refreshKeyboard()
     }
 
-    private func deletePinyinBuffer() {
-        let count = pinyinBuffer.utf16.count
+    private var activeBufferCount: Int {
+        if language == .english { return englishBuffer.utf16.count }
+        if nineKeyEnabled, !t9Buffer.isEmpty { return t9Buffer.utf16.count }
+        return pinyinBuffer.utf16.count
+    }
+
+    private func deleteCompositionBuffer() {
+        let count = activeBufferCount
         guard count > 0 else { return }
         for _ in 0..<count { textSink.deleteBackward() }
         pinyinBuffer = ""
+        t9Buffer = ""
+        englishBuffer = ""
         stopCompositionMonitor()
     }
 
@@ -353,14 +402,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func commit(candidate: InputCandidate) {
-        let deletionCount: Int
-        if language == .chinese {
-            deletionCount = pinyinBuffer.utf16.count
-            pinyinBuffer = ""
-        } else {
-            deletionCount = englishBuffer.utf16.count
-            englishBuffer = ""
-        }
+        let deletionCount = activeBufferCount
+        pinyinBuffer = ""
+        t9Buffer = ""
+        englishBuffer = ""
         if candidate.kind != .raw {
             for _ in 0..<deletionCount { textSink.deleteBackward() }
             textSink.insertText(candidate.text)
@@ -380,7 +425,8 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func refreshCandidates() {
-        let query = language == .chinese ? pinyinBuffer : englishBuffer
+        let isT9 = language == .chinese && nineKeyEnabled && !t9Buffer.isEmpty
+        let query = isT9 ? t9Buffer : (language == .chinese ? pinyinBuffer : englishBuffer)
         guard !query.isEmpty, let engine else {
             predictionGeneration += 1
             candidates = []
@@ -394,14 +440,25 @@ final class KeyboardViewController: UIInputViewController {
         let fuzzy = settings.fuzzy
         let scriptPreference = settings.script
         predictionQueue.async { [weak self] in
-            let result = (try? engine.predict(
-                input: query,
-                language: currentLanguage,
-                contextWords: context,
-                fuzzy: fuzzy,
-                scriptPreference: scriptPreference,
-                limit: 40
-            )) ?? []
+            let result: [InputCandidate]
+            if isT9 {
+                result = (try? engine.predictT9(
+                    digits: query,
+                    contextWords: context,
+                    fuzzy: fuzzy,
+                    scriptPreference: scriptPreference,
+                    limit: 40
+                )) ?? []
+            } else {
+                result = (try? engine.predict(
+                    input: query,
+                    language: currentLanguage,
+                    contextWords: context,
+                    fuzzy: fuzzy,
+                    scriptPreference: scriptPreference,
+                    limit: 40
+                )) ?? []
+            }
             DispatchQueue.main.async {
                 guard let self, generation == self.predictionGeneration else { return }
                 self.candidates = result
@@ -417,6 +474,7 @@ final class KeyboardViewController: UIInputViewController {
             shifted: isShifted,
             capsLocked: shiftLocked,
             returnKeyLabel: returnKeyLabel,
+            nineKey: nineKeyEnabled,
             force: force
         )
     }
@@ -445,7 +503,13 @@ final class KeyboardViewController: UIInputViewController {
     private func reconcileCompositionWithDocument() {
         guard textSinkOverride == nil else { return }
         let context = textDocumentProxy.documentContextBeforeInput ?? ""
-        if language == .chinese, !pinyinBuffer.isEmpty, !context.hasSuffix(pinyinBuffer) {
+        if language == .chinese, nineKeyEnabled, !t9Buffer.isEmpty, !context.hasSuffix(t9Buffer) {
+            t9Buffer = ""
+            predictionGeneration += 1
+            candidates = []
+            keyboardView.update(candidates: [])
+            stopCompositionMonitor()
+        } else if language == .chinese, !pinyinBuffer.isEmpty, !context.hasSuffix(pinyinBuffer) {
             pinyinBuffer = ""
             predictionGeneration += 1
             candidates = []
