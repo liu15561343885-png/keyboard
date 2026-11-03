@@ -58,6 +58,26 @@ final class UserAndScoringTests: XCTestCase {
         XCTAssertEqual(after.first?.text, "我比你")
     }
 
+    func testHybridScorerFallsBackWithoutModel() {
+        let scorer = HybridPredictionScorer(model: nil)
+        let features = CandidateFeatures(
+            baseFrequency: 0.6,
+            userFrequency: 0.1,
+            recency: 0.1,
+            bigram: 0.2,
+            trigram: 0.1,
+            pinyinMatch: 1.0,
+            translationAvailability: 1,
+            candidateLength: 0.2,
+            contextLength: 0.3
+        )
+        let context = PredictionContext(previousWords: ["今天"], typedPinyin: "tianqi", language: .chinese)
+        let breakdown = scorer.score(features: features, context: context)
+        XCTAssertEqual(breakdown.model, 0)
+        XCTAssertGreaterThan(breakdown.total, 0)
+        XCTAssertTrue(scorer.identifier.contains("fallback"))
+    }
+
     func testManifestSignatureRejectsTampering() throws {
         let built = try TestDataset.make()
         defer { built.remove() }

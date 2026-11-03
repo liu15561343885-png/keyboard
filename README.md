@@ -73,7 +73,7 @@ xcodebuild -project PrivateKeyboard.xcodeproj \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-> 当前开发机只有 Command Line Tools，`swift test` 会报 `no such module 'XCTest'`。测试文件已通过类型检查，24 个测试方法也已用本地 XCTest 兼容 shim 执行通过；标准 `swift test` 仍需 Xcode。
+> 当前开发机只有 Command Line Tools，`swift test` 会报 `no such module 'XCTest'`。测试文件已通过类型检查，25 个测试方法也已用本地 XCTest 兼容 shim 执行通过；标准 `swift test` 仍需 Xcode。
 
 ## 架构
 
@@ -219,7 +219,7 @@ swift run core-check Resources/Generated
 
 当前本地验证结果（2026-11-03）：
 
-- 24 个 XCTest 测试方法：**24/24 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
+- 25 个 XCTest 测试方法：**25/25 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
 - 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏）
 - 92 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
