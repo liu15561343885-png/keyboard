@@ -22,6 +22,16 @@ targets:
       - path: App
       - path: Resources/UpdatePublicKey.txt
         buildPhase: resources
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      - path: PRIVACY.md
+        buildPhase: resources
+      - path: THIRD_PARTY_LICENSES.md
+        buildPhase: resources
+      - path: LICENSE
+        buildPhase: resources
+      - path: licenses
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.privatekeyboard.app
@@ -46,6 +56,8 @@ targets:
     sources:
       - path: KeyboardExtension
       - path: Resources/Generated
+        buildPhase: resources
+      - path: Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
     settings:
       base:

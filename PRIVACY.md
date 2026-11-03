@@ -72,6 +72,17 @@ Core ML 模型随 App 本地运行，使用 `.cpuOnly` 配置；模型不访问�
 
 内置词库是 CC-CEDICT、wordfreq、Tatoeba、jieba 等公开数据的派生二进制。它们不包含 PrivateKeyboard 用户的输入或个人词频。第三方数据许可证见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
 
+## Apple 隐私清单
+
+仓库包含 [Resources/PrivacyInfo.xcprivacy](Resources/PrivacyInfo.xcprivacy)，并同时复制到 Host App 与 Keyboard Extension：
+
+- `NSPrivacyTracking = false`；
+- `NSPrivacyTrackingDomains = []`；
+- `NSPrivacyCollectedDataTypes = []`；
+- 仅声明 `NSPrivacyAccessedAPICategoryUserDefaults`，原因 `CA92.1`（App 自身设置）和 `1C8F.1`（App Group 共享设置）。
+
+App 与扩展的 bundle 还包含 `PRIVACY.md`、`THIRD_PARTY_LICENSES.md`、`LICENSE` 和 `licenses/` 全文，便于离线查阅。
+
 ## 安全报告
 
 如果发现键盘扩展联网、用户文本落盘、manifest 校验绕过或其他隐私问题，请不要公开利用细节，先通过仓库 Security 联系人报告。参见 [SECURITY.md](SECURITY.md)。

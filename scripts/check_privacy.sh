@@ -40,3 +40,28 @@ if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
 echo "privacy checks passed"
+
+# Apple privacy manifest must be present in both the app and the extension.
+python3 - <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path("Resources/PrivacyInfo.xcprivacy").read_text())
+if manifest.get("NSPrivacyTracking") is not False:
+    print("privacy manifest must declare NSPrivacyTracking=false", file=sys.stderr)
+    raise SystemExit(1)
+if manifest.get("NSPrivacyCollectedDataTypes") != []:
+    print("privacy manifest must declare no collected data types", file=sys.stderr)
+    raise SystemExit(1)
+api_types = manifest.get("NSPrivacyAccessedAPITypes", [])
+if not any(item.get("NSPrivacyAccessedAPIType") == "NSPrivacyAccessedAPICategoryUserDefaults" for item in api_types):
+    print("privacy manifest is missing the UserDefaults required-reason declaration", file=sys.stderr)
+    raise SystemExit(1)
+project = Path("PrivateKeyboard.xcodeproj/project.pbxproj").read_text()
+if project.count("PrivacyInfo.xcprivacy in Resources") < 2:
+    print("privacy manifest is not copied into both app and extension", file=sys.stderr)
+    raise SystemExit(1)
+print("privacy manifest: valid, included in app and extension")
+PY
