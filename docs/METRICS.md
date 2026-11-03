@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，25 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，27 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -34,11 +34,12 @@
 | 简拼 | 通过 | `nh` → 含 `你好` |
 | 用户词频提升 | 通过 | 记录 `我比你` 后进入候选 |
 | Ed25519 manifest | 通过 | 签名、篡改拒绝 |
+| 更新传输/HTTPS 检查 | 通过 | `UpdateService` URLProtocol 测试：manifest 下载、非 HTTPS 拒绝 |
 | 安装/回滚 | 通过 | 两次安装 + rollback 测试 |
 | 键盘扩展网络 API | 源码级检查通过 | `scripts/check_privacy.sh` |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、候选 3 个 |
-| XCTest 测试方法执行 | 25/25 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
+| XCTest 测试方法执行 | 27/27 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
 > 92 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。
