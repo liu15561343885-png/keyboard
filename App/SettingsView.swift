@@ -52,6 +52,14 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    Picker("中文键盘布局", selection: Binding(
+                        get: { model.settings.nineKeyEnabled },
+                        set: { model.setNineKey($0) }
+                    )) {
+                        Text("26 键").tag(false)
+                        Text("九键").tag(true)
+                    }
+                    .pickerStyle(.segmented)
                     NavigationLink("自定义词库") { CustomWordsView(model: model) }
                 }
 

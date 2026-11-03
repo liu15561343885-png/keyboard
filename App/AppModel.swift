@@ -78,6 +78,11 @@ final class AppModel: ObservableObject {
         save()
     }
 
+    func setNineKey(_ enabled: Bool) {
+        settings.nineKeyEnabled = enabled
+        save()
+    }
+
     func checkForUpdates() {
         Task { await checkAndInstallIfNeeded(automatic: false) }
     }
