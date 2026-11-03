@@ -51,7 +51,11 @@
 | Extension API 限制 | 通过 | Extension 以 `-application-extension` 编译/链接 |
 | 长按删除 | 通过 | 删除键存在 `UILongPressGestureRecognizer`，重复计时器实现连续删除 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
-| XCTest 测试方法执行 | 36/36 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
+| XCTest 测试方法执行 | 36/36 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
+| iOS Simulator 构建 | 通过 | 本机 Xcode 16.4 / iPhone 16 / iOS 18.6；`xcodebuild build` 成功 |
+| iOS Simulator 构建（CI） | 通过 | GitHub Actions Xcode 16.4；[run 41601735713](https://github.com/liu15561343885-png/keyboard/actions/runs/41601735713) |
+| iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 36/36；CI 同一 run 通过 |
+| Extension 符号检查 | 通过 | CI `nm` 检查无 URLSession |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
 > 98 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。
@@ -81,7 +85,7 @@
 2. **Core ML 编译**：若 Xcode 把 `.mlmodel` 编译为 `.mlmodelc` 并随包分发，可避免运行时编译；否则首次加载会调用 `MLModel.compileModel`。需要检查最终 App bundle。
 3. **FNV-1a 64 冲突**：n-gram 只用 hash 排序，冲突最坏导致上下文分数混合，不会破坏文本；但应在真实数据上监控。
 4. **拼音直接写入文本域**：当前方案在光标移动、撤销、外部文本变化时可能回删错误。真机验证前不建议称为稳定。
-5. **iOS SDK 构建未执行**：Catalyst 类型检查已通过，但仍需 Xcode/CI 对真实 iOS target、Asset Catalog、entitlements 和扩展嵌入做构建验证。
+5. **iOS 真机未验证**：iOS Simulator 已通过 CI 构建/测试；仍需真机对 Asset Catalog、entitlements、扩展加载和稳定性做验证。
 
 ## 验收规则
 

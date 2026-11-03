@@ -1,18 +1,24 @@
 # PrivateKeyboard
 
+[![CI](https://github.com/liu15561343885-png/keyboard/actions/workflows/ci.yml/badge.svg)](https://github.com/liu15561343885-png/keyboard/actions/workflows/ci.yml)
+
 GitHub: https://github.com/liu15561343885-png/keyboard
 
 一个完全离线的 iOS 中文输入法工程：SwiftUI 主 App、UIKit 键盘扩展、本地拼音引擎、本地中英双向词典、二元/三元语言模型、Core ML 微型候选排序，以及带 SHA-256 + Ed25519 校验的词库更新链路。
 
 > **当前状态：Alpha 工程预览，不是“可日常使用”的版本。**
 >
-> 本项目不声称达到大厂输入法效果。核心库已经在本机（macOS / Swift 6.1）构建并通过端到端检查；UIKit/SwiftUI 源码已通过 Mac Catalyst SDK 类型检查，全部测试方法也已执行通过。但本机没有 iOS SDK / 完整 Xcode，因此 **尚未完成 iOS Simulator/真机构建**。GitHub Actions 已配置 iOS 构建与测试，需在 CI 或安装 Xcode 后完成最终验收。所有指标见 [docs/METRICS.md](docs/METRICS.md)。
+> 本机 Xcode 16.4 / iPhone 16 Simulator：`xcodebuild build` **通过**，`xcodebuild test` **36/36 通过**。GitHub Actions（run 41601735713）同样全绿。真机仍未验证。
+>
+> 本项目不声称达到大厂输入法效果。核心库已在本机（macOS / Xcode 16.4）构建并通过端到端检查；`swift test` 36/36 通过；UIKit/SwiftUI 源码通过 Mac Catalyst 类型检查/链接。GitHub Actions 已在 Xcode 16.4 / iPhone 16 Simulator 上完成 iOS App + Keyboard Extension 构建、单元测试与扩展符号检查。**尚未在 iPhone 真机验证**，不能称为“可日常使用”。所有指标见 [docs/METRICS.md](docs/METRICS.md)。
+
+![Host App on iPhone 16 Simulator](docs/screenshots/host-app.png)
 
 ## 已经落地的东西
 
 | 能力 | 状态 |
 |---|---|
-| 26 键 QWERTY 拼音布局、中文/英文/数字/符号/Emoji 页面 | 代码已实现，UI 待 Xcode 编译与真机验证 |
+| 26 键 QWERTY 拼音布局、中文/英文/数字/符号/Emoji 页面 | iOS Simulator 构建通过；真机 UI 待验证 |
 | 中文全拼、简拼、模糊拼音（z/zh、c/ch、s/sh、n/l、f/h 等） | 已实现并有单元测试 |
 | `nihaobeijing` 类连续拼音切分、多切分排序、整句词级组合 | 已实现，核心检查通过 |
 | 中文词语、单字、短语和部分互联网词汇 | 内置词库 123,586 条中文词条、464,222 条英中释义 |
@@ -83,7 +89,7 @@ xcodebuild -project PrivateKeyboard.xcodeproj \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-> 当前开发机只有 Command Line Tools，`swift test` 会报 `no such module 'XCTest'`。测试文件已通过类型检查，31 个测试方法也已用本地 XCTest 兼容 shim 执行通过；标准 `swift test` 仍需 Xcode。
+> 本机已安装 Xcode 16.4；`swift test` 在 macOS 上 **36/36 通过**。GitHub Actions 的 iOS Simulator 构建和测试也已通过。
 
 ## 架构
 
@@ -229,8 +235,10 @@ swift run core-check Resources/Generated
 
 当前本地验证结果（2026-11-03）：
 
-- 36 个 XCTest 测试方法：**36/36 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
+- 36 个 XCTest 测试方法：**36/36 通过**（本机 Xcode 16.4 `swift test`）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
+- 本机 Xcode 16.4：iOS Simulator `build` 通过，`test` 36/36 通过；
+- GitHub Actions：iOS Simulator build、Xcode unit tests、Extension 符号检查通过（run 41601735713）；
 - 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏横向滚动、深色模式颜色解析、按键/候选回调、KeyboardViewController 实例化与 288 pt 高度）
 - 98 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
 - 候选平均延迟 **约 6 ms**（p95 约 15 ms）；引擎初始化约 7 ms（macOS Release；真机待测）
@@ -255,7 +263,7 @@ swift run core-check Resources/Generated
 
 ## 已知限制
 
-- **UIKit/SwiftUI target 已通过 Catalyst 类型检查，但尚未用 iOS SDK/Xcode 构建，也未真机验证。**
+- **iOS target 已在 GitHub Actions 的 iPhone 16 Simulator 上构建和测试通过；尚未在 iPhone 真机验证。**
 - 没有大厂级数据、句子语料或模型；LM 只有 20k/20k n-gram，不能称为完整语言模型。
 - 候选栏第二行可能截断长释义；简繁显示切换已实现，但上下文语言模型仍以简体键评分，地区词/完整转换仍是 v2。
 - 拼音直接写入文本域后再回删上屏，长文本/光标移动场景需要真机验证；当前没有使用 marked text。
