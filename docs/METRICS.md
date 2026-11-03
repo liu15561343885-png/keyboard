@@ -55,7 +55,7 @@
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 33 控件、数字页 31、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
 | XCTest 测试方法执行 | 35/35 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
 | iOS Simulator 构建 | 通过 | 本机 Xcode 16.4 / iPhone 16 / iOS 18.6；`xcodebuild build` 成功 |
-| iOS Simulator 构建（CI） | 通过 | GitHub Actions Xcode 16.4；[run 41628242781](https://github.com/liu15561343885-png/keyboard/actions/runs/41601735713) |
+| iOS Simulator 构建（CI） | 通过 | GitHub Actions Xcode 16.4；[run 41630721721](https://github.com/liu15561343885-png/keyboard/actions/runs/41601735713) |
 | iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 35/35；CI 同一 run 通过 |
 | Extension 符号检查 | 通过 | CI `nm` 检查无 URLSession |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
