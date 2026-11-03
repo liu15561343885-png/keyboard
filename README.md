@@ -226,7 +226,7 @@ swift run core-check Resources/Generated
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
 - 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏、深色模式颜色解析、按键/候选回调、KeyboardViewController 实例化与 288 pt 高度）
 - 98 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
-- 候选平均延迟 **6.12 ms**，p95 **14.84 ms**（macOS Release；真机待测）
+- 候选平均延迟 **6.66 ms**（median 5.22 ms，p95 15.04 ms）；引擎初始化 6.89 ms（macOS Release；真机待测）
 - Core ML：`Core ML micro-linear-1 · f1ec5f0b46`
 - 词库：123,586 词条，464,222 英文释义
 - 中英词典前缀查询：10/10

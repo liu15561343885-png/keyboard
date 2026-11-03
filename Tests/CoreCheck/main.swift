@@ -145,9 +145,17 @@ for (input, expected) in gold {
 let count = Double(gold.count)
 latencies.sort()
 let mean = latencies.reduce(0, +) / count
+let median = latencies[latencies.count / 2]
 let p95 = latencies[min(latencies.count - 1, Int(Double(latencies.count - 1) * 0.95))]
 print(String(format: "gold n=%.0f top1=%.1f%% top3=%.1f%% top5=%.1f%%", count, Double(hit1)/count*100, Double(hit3)/count*100, Double(hit5)/count*100))
-print(String(format: "latency mean=%.2fms p95=%.2fms max=%.2fms (CoreCheck process, macOS)", mean, p95, latencies.last ?? 0))
+print(String(format: "latency mean=%.2fms median=%.2fms p95=%.2fms max=%.2fms (CoreCheck process, macOS)", mean, median, p95, latencies.last ?? 0))
+let engineStart = CFAbsoluteTimeGetCurrent()
+let probeEngine = try PredictionEngine(paths: DatasetPaths.inDirectory(generatorDir)!, userHistory: UserHistoryStore(containerURL: tmp), fuzzyOptions: .common)
+let initMs = (CFAbsoluteTimeGetCurrent() - engineStart) * 1000
+let firstStart = CFAbsoluteTimeGetCurrent()
+_ = try probeEngine.predict(input: "nihao", language: .chinese, contextWords: [], limit: 5)
+let firstMs = (CFAbsoluteTimeGetCurrent() - firstStart) * 1000
+print(String(format: "engine init=%.2fms first prediction=%.2fms (macOS; iOS unmeasured)", initMs, firstMs))
 print("model: \(engine.modelStatusDescription)")
 print("dictionary: \(dictionary.count) words, \(english.count) English senses, \(inventory.syllableCount) syllables")
 
