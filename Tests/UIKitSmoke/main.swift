@@ -10,6 +10,7 @@ keyboard.translatesAutoresizingMaskIntoConstraints = true
 keyboard.frame = CGRect(x: 0, y: 0, width: 393, height: 288)
 keyboard.layoutIfNeeded()
 let letterKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
+precondition(KeyboardTheme.keySpacing == 0 && KeyboardTheme.horizontalMargin == 0, "native key metrics changed")
 print("letter page keys:", letterKeys)
 precondition(letterKeys == 32, "expected 32 key controls, got \(letterKeys)")
 

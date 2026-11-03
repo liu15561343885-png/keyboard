@@ -61,17 +61,3 @@ final class KeyboardUITests: XCTestCase {
         add(attachment)
     }
 }
-
-
-extension KeyboardUITests {
-    func testDumpSystemKeyboard() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-KeyboardTestMode"]
-        app.launch()
-        let field = app.textFields["keyboardTestField"]
-        XCTAssertTrue(field.waitForExistence(timeout: 15))
-        field.tap()
-        sleep(2)
-        print("SYSTEM KEYBOARD HIERARCHY\n\(app.keyboards.firstMatch.debugDescription)")
-    }
-}
