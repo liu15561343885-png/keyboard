@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，27 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，29 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -36,12 +36,14 @@
 | Ed25519 manifest | 通过 | 签名、篡改拒绝 |
 | 更新传输/HTTPS 检查 | 通过 | `UpdateService` URLProtocol 测试：manifest 下载、非 HTTPS 拒绝 |
 | 安装/回滚 | 通过 | 两次安装 + rollback 测试 |
+| 更新失败原子性 | 通过 | 失败安装不改变 current 版本 |
+| manifest 路径穿越 | 通过 | `../pinyin.bin` 被拒绝 |
 | 键盘扩展网络 API | 源码级检查通过 | `scripts/check_privacy.sh` |
 | Apple 隐私清单 | 通过 | `PrivacyInfo.xcprivacy` 同时进入 App 与扩展；无追踪、无采集声明 |
 | 本地数据备份排除 | 通过 | 用户词频文件与数据集根目录设置 `isExcludedFromBackup` |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、候选 3 个、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调 |
-| XCTest 测试方法执行 | 27/27 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
+| XCTest 测试方法执行 | 29/29 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
 > 92 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。

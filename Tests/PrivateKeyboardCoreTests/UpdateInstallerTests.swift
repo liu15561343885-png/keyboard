@@ -73,6 +73,60 @@ final class UpdateInstallerTests: XCTestCase {
         }
     }
 
+    func testFailedUpdateKeepsPreviousVersion() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let container = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PKContainer-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: container) }
+
+        let keys = try TestManifest.makeKeyPair()
+        let installer = DatasetInstaller(containerURL: container)
+        let v1 = try TestManifest.make(version: "1.0.0", built: built, privateKey: keys.privateKey)
+        _ = try installer.install(
+            manifest: v1,
+            downloadedFiles: downloadedFiles(from: built),
+            publicKeyBase64: keys.publicKey,
+            appVersion: "1.0.0",
+            osVersion: "17.0"
+        )
+        let v2 = try TestManifest.make(version: "1.0.1", built: built, privateKey: keys.privateKey)
+        var downloads = downloadedFiles(from: built)
+        let broken = built.directory.appendingPathComponent("broken.bin")
+        try Data("broken".utf8).write(to: broken)
+        downloads[DatasetFile.zhEn.rawValue] = broken
+
+        XCTAssertThrowsError(
+            try installer.install(
+                manifest: v2,
+                downloadedFiles: downloads,
+                publicKeyBase64: keys.publicKey,
+                appVersion: "1.0.0",
+                osVersion: "17.0"
+            )
+        )
+        XCTAssertEqual(installer.currentState().current?.dataVersion, "1.0.0")
+        XCTAssertNotNil(installer.paths())
+    }
+
+    func testManifestRejectsPathTraversal() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let keys = try TestManifest.makeKeyPair()
+        var manifest = try TestManifest.make(version: "1.0.0", built: built, privateKey: keys.privateKey)
+        var files = manifest.files
+        files[0].name = "../pinyin.bin"
+        manifest.files = files
+        XCTAssertThrowsError(try manifest.validateStructure()) { error in
+            guard let manifestError = error as? ManifestError,
+                  case .malformed = manifestError
+            else {
+                return XCTFail("expected malformed manifest, got \(error)")
+            }
+        }
+    }
+
     func testIncompatibleMinimumAppVersionIsRejected() throws {
         let built = try TestDataset.make()
         defer { built.remove() }
