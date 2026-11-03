@@ -156,6 +156,16 @@ let firstStart = CFAbsoluteTimeGetCurrent()
 _ = try probeEngine.predict(input: "nihao", language: .chinese, contextWords: [], limit: 5)
 let firstMs = (CFAbsoluteTimeGetCurrent() - firstStart) * 1000
 print(String(format: "engine init=%.2fms first prediction=%.2fms (macOS; iOS unmeasured)", initMs, firstMs))
+var t9Latencies: [Double] = []
+for _ in 0..<20 {
+    let start = CFAbsoluteTimeGetCurrent()
+    _ = try probeEngine.predictT9(digits: "64426", contextWords: [], limit: 40)
+    t9Latencies.append((CFAbsoluteTimeGetCurrent() - start) * 1000)
+}
+t9Latencies.sort()
+let t9Mean = t9Latencies.reduce(0, +) / Double(t9Latencies.count)
+let t9P95 = t9Latencies[min(t9Latencies.count - 1, Int(Double(t9Latencies.count - 1) * 0.95))]
+print(String(format: "T9 latency mean=%.2fms p95=%.2fms (digits 64426, macOS)", t9Mean, t9P95))
 print("model: \(engine.modelStatusDescription)")
 print("dictionary: \(dictionary.count) words, \(english.count) English senses, \(inventory.syllableCount) syllables")
 

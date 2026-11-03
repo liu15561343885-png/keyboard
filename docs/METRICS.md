@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，35 个 XCTest 测试方法已在本机 Xcode 16.4 `swift test` 和 iPhone 16 Simulator `xcodebuild test` 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，39 个 XCTest 测试方法已在本机 Xcode 16.4 `swift test` 和 iPhone 16 Simulator `xcodebuild test` 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -53,10 +53,10 @@
 | 键盘 UI 测试执行 | 1/1 通过 | `PrivateKeyboardUITests`；独立 scheme，不进入 CI |
 | 长按删除 | 通过 | 删除键存在 `UILongPressGestureRecognizer`，重复计时器实现连续删除 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 33 控件、数字页 31、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
-| XCTest 测试方法执行 | 35/35 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
+| XCTest 测试方法执行 | 39/39 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |
 | iOS Simulator 构建 | 通过 | 本机 Xcode 16.4 / iPhone 16 / iOS 18.6；`xcodebuild build` 成功 |
 | iOS Simulator 构建（CI） | 通过 | GitHub Actions Xcode 16.4；[run 41630721721](https://github.com/liu15561343885-png/keyboard/actions/runs/41601735713) |
-| iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 35/35；CI 同一 run 通过 |
+| iOS Simulator 单元测试 | 通过 | 本机 `xcodebuild test` 39/39；CI 同一 run 通过 |
 | Extension 符号检查 | 通过 | CI `nm` 检查无 URLSession |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
@@ -70,7 +70,8 @@
 | Top-3 | ≥ 95% | 未测 |
 | 常用短语联想准确率 | ≥ 70% | 未测 |
 | 中英双向词典盲测命中率 | ≥ 95% | 未测 |
-| 引擎初始化/模型加载 | 7.29 ms（macOS 代理） | 真机键盘扩展未测 |
+| 引擎初始化/模型加载 | 7.29–19.76 ms（macOS 代理） | 真机键盘扩展未测 |
+| T9 `64426` 候选延迟 | mean 19.05 ms / p95 30.55 ms | macOS Release；真机未测 |
 | 首次候选推理 | 3.19 ms（macOS 代理） | 真机未测 |
 | 键盘冷启动到可按键 | < 300 ms（iPhone 12 级） | 未测 |
 | 候选 p95 响应 | < 50 ms（真机 Release） | 未测 |
