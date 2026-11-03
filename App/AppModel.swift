@@ -8,6 +8,7 @@ import UIKit
 final class AppModel: ObservableObject {
     @Published var settings: KeyboardSettings
     @Published private(set) var userWordCount = 0
+    @Published private(set) var customWords: [UserLexiconEntry] = []
     @Published private(set) var datasetVersion = "—"
     @Published private(set) var datasetSource = "—"
     @Published private(set) var modelStatus = "未加载"
@@ -17,6 +18,7 @@ final class AppModel: ObservableObject {
 
     private let settingsStore: SharedSettingsStore
     private let userHistory: UserHistoryStore
+    private let userLexicon: UserLexiconStore
     private let installer: DatasetInstaller
     private let updateService: UpdateService
     private var didRunStartup = false
@@ -30,16 +32,19 @@ final class AppModel: ObservableObject {
         }()
         let settingsStore = SharedSettingsStore(defaults: AppGroup.settingsDefaults())
         let userHistory = UserHistoryStore(containerURL: container)
+        let userLexicon = UserLexiconStore(containerURL: container)
         let installer = DatasetInstaller(containerURL: container)
         let configuration = UpdateConfiguration.load()
         self.settingsStore = settingsStore
         self.settings = settingsStore.load()
         self.userHistory = userHistory
+        self.userLexicon = userLexicon
         self.installer = installer
         let session = URLSession(configuration: .ephemeral)
         self.updateService = UpdateService(installer: installer, configuration: configuration, session: session)
         self.isUpdateConfigured = configuration.isConfigured
         self.userWordCount = userHistory.trackedWordCount
+        self.customWords = userLexicon.allEntries
         refreshDatasetInfo()
         if !isUpdateConfigured {
             updateStatus = "未配置更新源（见 README）"
@@ -79,8 +84,30 @@ final class AppModel: ObservableObject {
 
     func clearPersonalData() {
         userHistory.clear()
+        userLexicon.clear()
+        customWords = []
         userWordCount = 0
-        updateStatus = "已清除本地词频和最近使用记录"
+        updateStatus = "已清除本地词频、最近使用记录和自定义词库"
+    }
+
+    func addCustomWord(word: String, pinyin: String, note: String) -> String? {
+        do {
+            _ = try userLexicon.add(word: word, pinyin: pinyin, note: note)
+            customWords = userLexicon.allEntries
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func removeCustomWord(id: UUID) {
+        userLexicon.remove(id: id)
+        customWords = userLexicon.allEntries
+    }
+
+    func reloadCustomWords() {
+        userLexicon.reload()
+        customWords = userLexicon.allEntries
     }
 
     func rollbackDataset() {

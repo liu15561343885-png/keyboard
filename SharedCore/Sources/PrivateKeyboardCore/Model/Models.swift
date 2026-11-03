@@ -90,6 +90,7 @@ public enum CandidateKind: String, Codable, Sendable {
     case chinese
     case english
     case composed
+    case custom
     case raw
 }
 

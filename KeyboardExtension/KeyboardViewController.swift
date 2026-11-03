@@ -19,6 +19,7 @@ final class KeyboardViewController: UIInputViewController {
     }()
     private lazy var settingsStore = SharedSettingsStore(defaults: AppGroup.settingsDefaults())
     private lazy var userHistory = UserHistoryStore(containerURL: containerURL)
+    private lazy var userLexicon = UserLexiconStore(containerURL: containerURL)
 
     private var settings = KeyboardSettings()
     private var engine: PredictionEngine?
@@ -76,6 +77,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         settings = settingsStore.load()
         userHistory.reload()
+        userLexicon.reload()
         if settings.lastLanguage != language {
             language = settings.lastLanguage
             keyboardView.configure(page: page, language: language, shifted: isShifted, force: true)
@@ -103,11 +105,13 @@ final class KeyboardViewController: UIInputViewController {
             fallback = nil
         }
         let history = userHistory
+        let lexicon = userLexicon
         let settingsSnapshot = settings
         predictionQueue.async { [weak self] in
             var loaded = try? PredictionEngine(
                 paths: paths,
                 userHistory: history,
+                userLexicon: lexicon,
                 fuzzyOptions: settingsSnapshot.fuzzy
             )
             var loadedVersion = resolved.version
@@ -312,7 +316,7 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<deletionCount { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(candidate.text)
             userHistory.recordSelection(of: candidate.text)
-            if candidate.kind == .chinese || candidate.kind == .composed {
+            if candidate.kind == .chinese || candidate.kind == .composed || candidate.kind == .custom {
                 contextWords.append(candidate.text)
                 if contextWords.count > 3 {
                     contextWords.removeFirst(contextWords.count - 3)

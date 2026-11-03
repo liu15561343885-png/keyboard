@@ -28,6 +28,7 @@ PrivateKeyboard 的目标是：**输入内容、按键、上下文和个人词�
 | 数据 | 位置 | 用途 | 可否清除 |
 |---|---|---|---|
 | 用户词频 | App Group `user-history.json` | 候选排序 | 是 |
+| 自定义词库 | App Group `user-lexicon.json` | 用户自定义候选 | 是 |
 | 最近使用词条 | 同上 | 候选排序 | 是 |
 | 键盘设置（声音/触感/模糊音） | App Group UserDefaults | 键盘行为 | 可重置 |
 | 只读词库/模型 | Extension bundle + App Group 数据目录 | 输入与排序 | 随 App/版本删除 |
@@ -65,8 +66,8 @@ Core ML 模型随 App 本地运行，使用 `.cpuOnly` 配置；模型不访问�
 
 主 App → 本地数据 → **清除个人词库与词频**：
 
-- 清空 `user-history.json`；
-- 内存中的当前输入法实例可能在下次键盘显示时刷新词频。
+- 清空 `user-history.json` 和 `user-lexicon.json`；
+- 内存中的当前输入法实例可能在下次键盘显示时刷新。
 
 ## 数据许可证与隐私的关系
 

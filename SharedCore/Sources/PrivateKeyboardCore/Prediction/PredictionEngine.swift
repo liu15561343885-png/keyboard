@@ -9,6 +9,7 @@ public final class PredictionEngine {
     public let scorer: HybridPredictionScorer
     public let paths: DatasetPaths
     public let fuzzyOptions: FuzzyPinyinOptions
+    public let userLexicon: UserLexiconStore?
 
     private let generator: PinyinCandidateGenerator
     private let englishGenerator: EnglishSuggestionEngine
@@ -17,6 +18,7 @@ public final class PredictionEngine {
     public init(
         paths: DatasetPaths,
         userHistory: UserHistoryStore,
+        userLexicon: UserLexiconStore? = nil,
         fuzzyOptions: FuzzyPinyinOptions = .common,
         weighted: WeightedPredictionScorer = WeightedPredictionScorer()
     ) throws {
@@ -28,6 +30,7 @@ public final class PredictionEngine {
         let trigram = try TrigramLanguageModel(url: paths.trigram)
         self.languageModel = ContextLanguageModel(bigram: bigram, trigram: trigram)
         self.userHistory = userHistory
+        self.userLexicon = userLexicon
         self.fuzzyOptions = fuzzyOptions
         self.generator = PinyinCandidateGenerator(dictionary: dictionary, inventory: inventory)
         self.englishGenerator = EnglishSuggestionEngine(dictionary: englishDictionary)
@@ -89,6 +92,37 @@ public final class PredictionEngine {
             let generated = try generator.candidates(for: normalized, fuzzy: fuzzy ?? fuzzyOptions, limit: 80)
             for seed in generated.seeds {
                 append(seed: seed)
+            }
+            if let userLexicon {
+                let compactInput = normalized.replacingOccurrences(of: " ", with: "")
+                for entry in userLexicon.allEntries {
+                    let compactKey = entry.pinyin.replacingOccurrences(of: " ", with: "")
+                    let abbreviation = PinyinText.abbreviation(ofKey: entry.pinyin)
+                    let matchScore: Double?
+                    if compactKey == compactInput {
+                        matchScore = 1.0
+                    } else if abbreviation == compactInput {
+                        matchScore = 0.9
+                    } else if compactInput.count >= 2 && compactKey.hasPrefix(compactInput) {
+                        matchScore = 0.65
+                    } else {
+                        matchScore = nil
+                    }
+                    guard let matchScore else { continue }
+                    append(
+                        seed: CandidateSeed(
+                            text: entry.word,
+                            traditional: entry.word,
+                            pinyin: entry.pinyin,
+                            pinyinKey: compactKey,
+                            frequency: 50_000,
+                            glosses: entry.note.isEmpty ? [] : [Gloss(definition: entry.note)],
+                            matchScore: matchScore,
+                            entryID: nil,
+                            kind: .custom
+                        )
+                    )
+                }
             }
             if normalized.count >= 2 {
                 let english = try englishGenerator.suggestions(for: normalized, limit: 8)
@@ -155,6 +189,8 @@ public final class PredictionEngine {
             pinyinMatch = seed.matchScore * 0.85
         case .english:
             pinyinMatch = seed.matchScore * 0.55
+        case .custom:
+            pinyinMatch = seed.matchScore
         case .raw:
             pinyinMatch = 0
         }
@@ -180,6 +216,9 @@ public final class PredictionEngine {
         }
         if seed.kind == .composed {
             return "本地组合 · 连续拼音"
+        }
+        if seed.kind == .custom {
+            return "自定义词"
         }
         if let previous = contextWords.last {
             return "本地联想 · \(previous)"

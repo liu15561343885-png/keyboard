@@ -40,6 +40,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    NavigationLink("自定义词库") { CustomWordsView(model: model) }
                 }
 
                 Section {
@@ -92,7 +93,7 @@ struct SettingsView: View {
                         showClearConfirmation = true
                     }
                 } footer: {
-                    Text("只会删除本机 App Group 中的用户词频和最近使用记录，不会影响共享词库。")
+                    Text("只会删除本机 App Group 中的用户词频、最近使用记录和自定义词库，不会影响共享词库。")
                 }
             }
             .navigationTitle("PrivateKeyboard")
