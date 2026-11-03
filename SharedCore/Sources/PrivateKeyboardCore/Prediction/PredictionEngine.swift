@@ -157,6 +157,9 @@ public final class PredictionEngine {
     }
 
     private func detailText(for seed: CandidateSeed, contextWords: [String]) -> String {
+        if seed.kind == .english, !seed.glosses.isEmpty {
+            return seed.glosses.prefix(2).map(\.display).joined(separator: " · ")
+        }
         if let gloss = seed.glosses.first {
             return gloss.display
         }

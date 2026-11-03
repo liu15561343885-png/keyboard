@@ -306,20 +306,31 @@ public struct EnglishSuggestionEngine {
     public func suggestions(for rawInput: String, limit: Int = 12) throws -> [CandidateSeed] {
         let prefix = EnglishText.normalizeKey(rawInput)
         guard !prefix.isEmpty else { return [] }
-        let entries = try dictionary.prefixEntries(prefix: prefix, limit: limit)
-        var seen = Set<String>()
-        var result: [CandidateSeed] = []
+        let entries = try dictionary.prefixEntries(prefix: prefix, limit: max(limit * 4, 24))
+        var orderedKeys: [String] = []
+        var grouped: [String: [EnglishEntry]] = [:]
         for entry in entries {
-            guard seen.insert(entry.english).inserted else { continue }
+            if grouped[entry.english] == nil {
+                orderedKeys.append(entry.english)
+            }
+            grouped[entry.english, default: []].append(entry)
+        }
+
+        var result: [CandidateSeed] = []
+        for english in orderedKeys where result.count < limit {
+            guard let senses = grouped[english], let best = senses.first else { continue }
+            let glosses = senses.prefix(4).map {
+                Gloss(partOfSpeech: $0.partOfSpeech, definition: $0.chinese)
+            }
             result.append(
                 CandidateSeed(
-                    text: entry.english,
+                    text: english,
                     traditional: "",
                     pinyin: "",
                     pinyinKey: "",
-                    frequency: 1,
-                    glosses: [Gloss(partOfSpeech: entry.partOfSpeech, definition: entry.chinese)],
-                    matchScore: entry.english == prefix ? 0.95 : 0.78,
+                    frequency: best.frequency,
+                    glosses: glosses,
+                    matchScore: english == prefix ? 0.95 : 0.78,
                     entryID: nil,
                     kind: .english
                 )

@@ -100,7 +100,32 @@ let gold: [(String, String)] = [
     ("gongzuo", "工作"), ("xuexi", "学习"), ("nihaobeijing", "你好北京"),
     ("zongguo", "中国"), ("wo", "我"), ("ni", "你"), ("ai", "爱"),
     ("dianzan", "点赞"), ("wobing", "卧病"), ("wobini", "我比你"),
-    ("beijinghuanyingni", "北京欢迎你")
+    ("beijinghuanyingni", "北京欢迎你"),
+    ("shanghai", "上海"), ("guangzhou", "广州"), ("shenzhen", "深圳"),
+    ("mingtian", "明天"), ("zuotian", "昨天"), ("xianzai", "现在"),
+    ("shijian", "时间"), ("xuexiao", "学校"), ("xuesheng", "学生"),
+    ("laoshi", "老师"), ("shouji", "手机"), ("diannao", "电脑"),
+    ("wangluo", "网络"), ("shurufa", "输入法"), ("jianpan", "键盘"),
+    ("zhongwen", "中文"), ("yingwen", "英文"), ("fanyi", "翻译"),
+    ("ciku", "词库"), ("yinsi", "隐私"), ("anquan", "安全"),
+    ("bendi", "本地"), ("zaixian", "在线"), ("gengxin", "更新"),
+    ("banben", "版本"), ("duibuqi", "对不起"), ("meiguanxi", "没关系"),
+    ("chifan", "吃饭"), ("heshui", "喝水"), ("shuijiao", "睡觉"),
+    ("qichuang", "起床"), ("shangban", "上班"), ("xiaban", "下班"),
+    ("huijia", "回家"), ("kandianying", "看电影"),
+    ("tingyinyue", "听音乐"), ("wanyouxi", "玩游戏"),
+    ("yiyuan", "医院"), ("bangzhu", "帮助"), ("xuyao", "需要"),
+    ("zhidao", "知道"), ("juede", "觉得"), ("renwei", "认为"),
+    ("xiwang", "希望"), ("kaishi", "开始"), ("jieshu", "结束"),
+    ("yijing", "已经"), ("zhengzai", "正在"), ("keneng", "可能"),
+    ("danshi", "但是"), ("yinwei", "因为"), ("suoyi", "所以"),
+    ("ruguo", "如果"), ("haishi", "还是"), ("huozhe", "或者"),
+    ("erqie", "而且"), ("suiran", "虽然"), ("ranhou", "然后"),
+    ("zuihou", "最后"), ("yiqi", "一起"), ("yidian", "一点"),
+    ("yixia", "一下"), ("feichang", "非常"), ("zhende", "真的"),
+    ("zhibo", "直播"), ("duanshipin", "短视频"), ("biaoqingbao", "表情包"),
+    ("liuliang", "流量"), ("zhongcao", "种草"), ("daka", "打卡"),
+    ("wangyou", "网友"), ("resou", "热搜")
 ]
 var hit1 = 0, hit3 = 0, hit5 = 0
 var latencies: [Double] = []

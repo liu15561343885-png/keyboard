@@ -1,15 +1,15 @@
 {
   "attribution" : "CC-CEDICT by MDBG; frequency data derived from wordfreq by Robyn Speer; n-gram counts derived from Tatoeba contributors; jieba by fxsjy. See THIRD_PARTY_LICENSES.md.",
-  "bigramCount" : 5000,
-  "builtAt" : "2026-11-03T06:04:19Z",
+  "bigramCount" : 20000,
+  "builtAt" : "2026-11-03T06:19:40Z",
   "dataVersion" : "2026.11.1",
-  "englishSenseCount" : 464179,
+  "englishSenseCount" : 464188,
   "files" : {
-    "dictionary.en-zh.bin" : "c47c4ade4f705d86b7be052d9a1d9d59f72312feb84f5651ffc4062d359efc08",
-    "dictionary.zh-en.bin" : "4c7769c6b1e35ff4b3a5dc28dc2ec80b216aeaedf78d364a95f7456a0eb2bcf1",
-    "lm.bigram.bin" : "2976de357bf7acae99b84a8044e0c619291518a775ae6d919d77823aa6b60989",
-    "lm.trigram.bin" : "b9f985026c8e1fe55cdf81fd9a1b7671e895f5154489cfb358276b9fbd152376",
-    "pinyin.bin" : "51e64b648ecd5364ee743122ce6b1d003094a071b97aed5587396722471d0d3d"
+    "dictionary.en-zh.bin" : "ed2f1fcf1be0f7311753cf406f6c55ea7a8507c153e1fe05a4101df3828f7b3b",
+    "dictionary.zh-en.bin" : "df2b8a1ca582cdfe9f480adad6cc85058370e37edd33b4e409d3bdcb820eb8f2",
+    "lm.bigram.bin" : "ebff4d2a719b389c7e9e50d6ba37a0b5c8a855e7d7b297daf98bbeb688bb4fd5",
+    "lm.trigram.bin" : "850213d517f32a464ea423ff0f710e5f235ee4fc7d2bffc788129730c3d34589",
+    "pinyin.bin" : "3585f4d94822a148968e4759d860931f26a1466a0e758d75dfa3670008aefe8e"
   },
   "license" : "CC BY-SA 4.0 (CC-CEDICT, wordfreq); CC BY 2.0 FR (Tatoeba n-grams); MIT (jieba)",
   "minAppVersion" : "1.0.0",
@@ -17,6 +17,6 @@
   "sourceName" : "CC-CEDICT + wordfreq + Tatoeba + reviewed additions",
   "sourceURL" : "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
   "syllableCount" : 467,
-  "trigramCount" : 5000,
-  "wordCount" : 123578
+  "trigramCount" : 20000,
+  "wordCount" : 123581
 }

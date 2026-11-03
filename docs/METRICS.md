@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit 键盘、SwiftUI App、真机启动、键盘扩展峰值内存、长期稳定性尚未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，20 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -12,7 +12,7 @@
 | 系统 | macOS 15.6 (24G84) |
 | Swift | 6.1.2 (swiftlang-6.1.2.1.2) |
 | 构建 | `swift run -c release core-check Resources/Generated` |
-| 数据 | 内置 `2026.11.1`：123,578 词条、464,179 英中释义、467 音节、5,000 bigram、5,000 trigram |
+| 数据 | 内置 `2026.11.1`：123,581 词条、464,188 英中释义、467 音节、20,000 bigram、20,000 trigram |
 | 模型 | Core ML `micro-linear-1`，CPU，9 维输入 |
 | 日期 | 2026-11-03 |
 
@@ -22,13 +22,13 @@
 
 | 指标 | 结果 | 样本/说明 |
 |---|---:|---|
-| 中文拼音 Top-1 命中率 | **100%** | 20 条人工金标准，见 `Tests/CoreCheck/main.swift` |
+| 中文拼音 Top-1 命中率 | **100%** | 92 条人工金标准，见 `Tests/CoreCheck/main.swift` |
 | 中文 Top-3 命中率 | **100%** | 同上 |
 | 中文 Top-5 命中率 | **100%** | 同上 |
 | 中英词典前缀命中率 | **100%** | 10 条英文查询各取至少 1 条 |
-| 候选平均延迟 | **8.07 ms** | 20 次串行查询，Release，macOS；多次运行约 7–8 ms |
-| 候选 p95 延迟 | **17.40 ms** | 同上；多次运行约 16–20 ms |
-| 候选最大延迟 | **38.97 ms** | 同上 |
+| 候选平均延迟 | **6.38 ms** | 92 次串行查询，Release，macOS；多次运行约 6–8 ms |
+| 候选 p95 延迟 | **12.98 ms** | 同上 |
+| 候选最大延迟 | **37.02 ms** | 同上 |
 | 连续拼音组合 | 通过 | `nihaobeijing` → `你好北京` |
 | 模糊拼音 | 通过 | `zongguo` + zh/z → `中国` |
 | 简拼 | 通过 | `nh` → 含 `你好` |
@@ -36,9 +36,11 @@
 | Ed25519 manifest | 通过 | 签名、篡改拒绝 |
 | 安装/回滚 | 通过 | 两次安装 + rollback 测试 |
 | 键盘扩展网络 API | 源码级检查通过 | `scripts/check_privacy.sh` |
+| UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
+| XCTest 测试方法执行 | 20/20 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
-> 20 条查询太少，且是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。
+> 92 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。
 
 ## 未测项（必须补齐后才能讨论日常使用）
 
@@ -63,7 +65,7 @@
 2. **Core ML 编译**：若 Xcode 把 `.mlmodel` 编译为 `.mlmodelc` 并随包分发，可避免运行时编译；否则首次加载会调用 `MLModel.compileModel`。需要检查最终 App bundle。
 3. **FNV-1a 64 冲突**：n-gram 只用 hash 排序，冲突最坏导致上下文分数混合，不会破坏文本；但应在真实数据上监控。
 4. **拼音直接写入文本域**：当前方案在光标移动、撤销、外部文本变化时可能回删错误。真机验证前不建议称为稳定。
-5. **UIKit target 未在本机编译**：这是最大的发布风险，必须由 CI 或 Xcode 机器先解决编译错误。
+5. **iOS SDK 构建未执行**：Catalyst 类型检查已通过，但仍需 Xcode/CI 对真实 iOS target、Asset Catalog、entitlements 和扩展嵌入做构建验证。
 
 ## 验收规则
 

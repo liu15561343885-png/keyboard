@@ -75,6 +75,7 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         settings = settingsStore.load()
+        userHistory.reload()
         if settings.lastLanguage != language {
             language = settings.lastLanguage
             keyboardView.configure(page: page, language: language, shifted: isShifted, force: true)

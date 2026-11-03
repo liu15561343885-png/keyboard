@@ -4,7 +4,7 @@
 
 > **当前状态：Alpha 工程预览，不是“可日常使用”的版本。**
 >
-> 本项目不声称达到大厂输入法效果。核心库已经在本机（macOS / Swift 6.1）构建并通过端到端检查；但本机没有完整 Xcode / iOS SDK，因此 **UIKit 键盘和 SwiftUI 主 App 尚未在真机或模拟器上编译验证**。GitHub Actions 已配置 iOS 构建与测试，需在 CI 或安装 Xcode 后验证。所有指标见 [docs/METRICS.md](docs/METRICS.md)。
+> 本项目不声称达到大厂输入法效果。核心库已经在本机（macOS / Swift 6.1）构建并通过端到端检查；UIKit/SwiftUI 源码已通过 Mac Catalyst SDK 类型检查，全部测试方法也已执行通过。但本机没有 iOS SDK / 完整 Xcode，因此 **尚未完成 iOS Simulator/真机构建**。GitHub Actions 已配置 iOS 构建与测试，需在 CI 或安装 Xcode 后完成最终验收。所有指标见 [docs/METRICS.md](docs/METRICS.md)。
 
 ## 已经落地的东西
 
@@ -13,10 +13,10 @@
 | 26 键 QWERTY 拼音布局、中文/英文/数字/符号/Emoji 页面 | 代码已实现，UI 待 Xcode 编译与真机验证 |
 | 中文全拼、简拼、模糊拼音（z/zh、c/ch、s/sh、n/l、f/h 等） | 已实现并有单元测试 |
 | `nihaobeijing` 类连续拼音切分、多切分排序、整句词级组合 | 已实现，核心检查通过 |
-| 中文词语、单字、短语和部分互联网词汇 | 内置词库 123,578 条中文词条、464,179 条英中释义 |
+| 中文词语、单字、短语和部分互联网词汇 | 内置词库 123,581 条中文词条、464,188 条英中释义 |
 | 中→英释义第二行、英→中本地查询 | 已实现；词典与候选栏绑定 |
 | 本地用户词频与最近使用 | 已实现，App Group 本地 JSON |
-| 二元/三元语言模型 | 已实现二进制 mmap 查询；内置 5,000 bigram + 5,000 trigram |
+| 二元/三元语言模型 | 已实现二进制 mmap 查询；内置 20,000 bigram + 20,000 trigram |
 | Core ML 微型候选排序 | 已训练 `micro-linear-1`（9 维数值特征，CPU，1.4 KB） |
 | 候选栏两行、横向滚动、深色模式 | 代码已实现，待视觉/触感真机验收 |
 | 按键音、触感反馈 | 代码已实现，受设置控制 |
@@ -40,9 +40,12 @@
 swift build
 swift run core-check Resources/Generated
 ./scripts/check_privacy.sh
+./scripts/typecheck_catalyst.sh
 ```
 
 `core-check` 会实际打开内置二进制词库、执行连续拼音切分、候选生成、Core ML 推理、用户词频、签名 manifest 安装与回滚，并打印 Top-1/Top-3/Top-5 与延迟指标。
+
+`typecheck_catalyst.sh` 使用 macOS SDK 内置的 Mac Catalyst UIKit/SwiftUI 对 App 和键盘扩展做类型检查；它不能替代 iOS SDK 构建，但能在没有 Xcode 时捕获 UIKit/SwiftUI API 和类型错误。
 
 ### 2. 用 Xcode 构建 App
 
@@ -125,11 +128,11 @@ PrivateKeyboard/
 
 ### 数据规模（当前内置版本 `2026.11.1`）
 
-- 中文词条：123,578
-- 英中释义记录：464,179
+- 中文词条：123,581
+- 英中释义记录：464,188
 - 拼音音节：467
-- bigram：5,000（Tatoeba 派生）
-- trigram：5,000
+- bigram：20,000（Tatoeba 派生）
+- trigram：20,000
 - Core ML 模型：9 个数值输入，1 个 `score` 输出
 
 ### 重新构建数据
@@ -213,16 +216,18 @@ Core ML 模型输入为：
 swift run core-check Resources/Generated
 ```
 
-当前核心检查结果（macOS Release，2026-11-03）：
+当前本地验证结果（2026-11-03）：
 
-- 20 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
-- 候选平均延迟 **约 8 ms**，p95 **约 17 ms**（macOS Release；真机待测）
+- 20 个 XCTest 测试方法：**20/20 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
+- Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
+- 92 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
+- 候选平均延迟 **6.38 ms**，p95 **12.98 ms**（macOS Release；真机待测）
 - Core ML：`Core ML micro-linear-1 · f1ec5f0b46`
-- 词库：123,578 词条，464,179 英文释义
+- 词库：123,581 词条，464,188 英文释义
 - 中英词典前缀查询：10/10
 - manifest 签名/安装/回滚：通过
 
-这不是“大厂级”指标，样本也只有 20 条。完整目标、未测项和验收门槛见 [docs/METRICS.md](docs/METRICS.md)。
+这不是“大厂级”指标，样本也只有 92 条。完整目标、未测项和验收门槛见 [docs/METRICS.md](docs/METRICS.md)。
 
 ## 隐私
 
@@ -238,8 +243,8 @@ swift run core-check Resources/Generated
 
 ## 已知限制
 
-- **UIKit/SwiftUI target 尚未在本机 Xcode 中编译或真机验证。**
-- 没有大厂级数据、句子语料或模型；LM 只有 5k/5k n-gram，不能称为完整语言模型。
+- **UIKit/SwiftUI target 已通过 Catalyst 类型检查，但尚未用 iOS SDK/Xcode 构建，也未真机验证。**
+- 没有大厂级数据、句子语料或模型；LM 只有 20k/20k n-gram，不能称为完整语言模型。
 - 候选栏第二行可能截断长释义；简繁转换尚无 UI 切换（词库同时保存简繁）。
 - 拼音直接写入文本域后再回删上屏，长文本/光标移动场景需要真机验证；当前没有使用 marked text。
 - 自动更新需要配置真实公钥、私有签名 secret 和公开 manifest URL；仓库默认未启用网络更新。

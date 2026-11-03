@@ -31,7 +31,7 @@
       "name": "dictionary.zh-en.bin",
       "kind": "zh-en",
       "url": "https://github.com/ORG/REPO/releases/download/data-2026.11.1/dictionary.zh-en.bin",
-      "size": 14577139,
+      "size": 14577416,
       "sha256": "…64 hex…",
       "compression": "none",
       "modelVersion": ""
