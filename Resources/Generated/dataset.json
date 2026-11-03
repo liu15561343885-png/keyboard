@@ -9,7 +9,7 @@
     "dictionary.zh-en.bin": "6baf8d1e890d99d289a8621e4d7f3be279ebf25d96a3446cefb66d3a72e4746a",
     "lm.bigram.bin": "019e57217b070e2fe862d17dc449da7df0176f406836ac6ecd2a8f88e831c0ff",
     "lm.trigram.bin": "e8f08f94a57804eea460fcff67afd4a5467bf2882924170450cb4f4db01be72e",
-    "nextwords.json": "21e74bbfb85f8b4041f1d774d1c7ef6e8c8d07c867777d3fe175461d89662d93",
+    "nextwords.json": "01b64531e2014428a212721c6ff8ca4028a8a09b6606a2e39af5d87b644450b3",
     "pinyin.bin": "4f58f0e8b0e6d3583443bd4c9d2ac81bfab0c311ddff7ff15cd54c388073b84b"
   },
   "license": "CC BY-SA 4.0 (CC-CEDICT, wordfreq); CC BY 2.0 FR (Tatoeba n-grams); MIT (jieba)",
