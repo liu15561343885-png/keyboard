@@ -42,7 +42,7 @@ enum KeyboardTheme {
     static let candidateDetailFont = UIFont.systemFont(ofSize: 10.5, weight: .regular)
     static let candidateBarHeight: CGFloat = 56
     static let keyRowHeight: CGFloat = 43
-    static let keySpacing: CGFloat = 6
-    static let horizontalMargin: CGFloat = 6
+    static let keySpacing: CGFloat = 0
+    static let horizontalMargin: CGFloat = 0
     static let keyboardHeight: CGFloat = 288
 }
