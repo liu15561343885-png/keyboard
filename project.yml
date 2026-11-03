@@ -72,6 +72,18 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
       - package: PrivateKeyboardCore
+  PrivateKeyboardUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/KeyboardUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.privatekeyboard.app.uitests
+        TEST_TARGET_NAME: PrivateKeyboard
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: PrivateKeyboard
   PrivateKeyboardTests:
     type: bundle.unit-test
     platform: iOS
@@ -101,3 +113,14 @@ schemes:
       gatherCoverageData: true
       targets:
         - PrivateKeyboardTests
+
+  PrivateKeyboardUITests:
+    build:
+      targets:
+        PrivateKeyboard: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PrivateKeyboardUITests

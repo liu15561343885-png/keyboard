@@ -5,7 +5,9 @@ func allSubviews(_ view: UIView) -> [UIView] {
     [view] + view.subviews.flatMap(allSubviews)
 }
 
-let keyboard = KeyboardView(frame: CGRect(x: 0, y: 0, width: 375, height: 288))
+let keyboard = KeyboardView(frame: CGRect(x: 0, y: 0, width: 393, height: 288))
+keyboard.translatesAutoresizingMaskIntoConstraints = true
+keyboard.frame = CGRect(x: 0, y: 0, width: 393, height: 288)
 keyboard.layoutIfNeeded()
 let letterKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("letter page keys:", letterKeys)
@@ -38,6 +40,14 @@ func keyButton(withLabel label: String) -> KeyButton? {
 
 var observedActions: [KeyAction] = []
 keyboard.onAction = { observedActions.append($0) }
+print("keyboard frame:", keyboard.frame)
+for label in ["q", "i", "h", "a", "o", "n", "空格"] {
+    if let key = keyButton(withLabel: label) {
+        print("key \(label) frame:", key.frame)
+    }
+}
+let barForFrames = allSubviews(keyboard).compactMap { $0 as? CandidateBarView }.first
+print("candidate bar frame:", barForFrames?.frame as Any)
 precondition(keyButton(withLabel: "q") != nil, "q key not found")
 if let q = keyButton(withLabel: "q") {
     _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: q)

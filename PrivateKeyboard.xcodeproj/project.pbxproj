@@ -28,6 +28,7 @@
 		7B4EDB35FFEE30FB386AA971 /* CandidateBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58B811B89DA9488305642EE /* CandidateBarView.swift */; };
 		7C4D0AA79B523A49152E15CF /* BinaryFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF34A162145CD4C3EA476D6 /* BinaryFormatTests.swift */; };
 		7D877037754354272642C91F /* dictionary.zh-en.bin in Resources */ = {isa = PBXBuildFile; fileRef = DFBEA21CFC6488413D0A830B /* dictionary.zh-en.bin */; };
+		840B076C73311C73493C834A /* KeyboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D58EB9B0323364380B787E /* KeyboardUITests.swift */; };
 		887E3E26A3AE40F969CA7C7F /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0781C86C31FD1C98FD688190 /* KeyboardViewController.swift */; };
 		94FCFF33C8258A803DD3AA67 /* TATOEBA-CC-BY-2.0-FR.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8138B9FCE63281BAA75733E9 /* TATOEBA-CC-BY-2.0-FR.txt */; };
 		9509EA88DC098299F52207B2 /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D536B0E3A36F6EE2007EE2D0 /* PrivacyView.swift */; };
@@ -70,6 +71,13 @@
 			remoteGlobalIDString = E27D5CBC845F041C1F3FEF9F;
 			remoteInfo = PrivateKeyboardKeyboard;
 		};
+		DB60F651836195BE1F697B79 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 14F6222180F9CCB92B565C6C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E98195D861178AFAFBE0FA9F;
+			remoteInfo = PrivateKeyboard;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -92,6 +100,7 @@
 		08AF41A614C4724EB6CC66EF /* TestDataset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDataset.swift; sourceTree = "<group>"; };
 		0BC5A4892EA882AA84387281 /* CustomWordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomWordsView.swift; sourceTree = "<group>"; };
 		0BDF2E2CFFB5B6C9E105278B /* MIT-jieba.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "MIT-jieba.txt"; sourceTree = "<group>"; };
+		0F7763D9907AC04519A6F8A1 /* PrivateKeyboardUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrivateKeyboardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C3C2544FF464EF039E3ACDD /* lm.trigram.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = lm.trigram.bin; sourceTree = "<group>"; };
 		24725B239CBEB5EB89951E30 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2D07106945BFAC2EF8CA2DE2 /* THIRD_PARTY_LICENSES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = THIRD_PARTY_LICENSES.md; sourceTree = "<group>"; };
@@ -123,6 +132,7 @@
 		BBF34A162145CD4C3EA476D6 /* BinaryFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryFormatTests.swift; sourceTree = "<group>"; };
 		C44C769F3687E9A7ECF40B63 /* candidate_scorer.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = candidate_scorer.mlmodel; sourceTree = "<group>"; };
 		C4FF16F8F55D932B2FEF4352 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C5D58EB9B0323364380B787E /* KeyboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardUITests.swift; sourceTree = "<group>"; };
 		C7D291925D85314B4054D529 /* lm.bigram.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = lm.bigram.bin; sourceTree = "<group>"; };
 		D2951A7649232810EBCF150C /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
 		D3A9C366BFB06A6D3AA65548 /* QualityMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityMetricsTests.swift; sourceTree = "<group>"; };
@@ -169,6 +179,7 @@
 		0638921CB48BA39843E1FA2E /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				E2DE4594D2DB7DECE556B340 /* KeyboardUITests */,
 				32C7E56E69344C260926D704 /* PrivateKeyboardCoreTests */,
 			);
 			path = Tests;
@@ -269,6 +280,7 @@
 				4F41F6E0610FF0570D7A007A /* PrivateKeyboard.app */,
 				FBBCE8E0788371D485EC36DB /* PrivateKeyboardKeyboard.appex */,
 				03F9AE64E001FF980644C091 /* PrivateKeyboardTests.xctest */,
+				0F7763D9907AC04519A6F8A1 /* PrivateKeyboardUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -281,6 +293,14 @@
 				281CD22BCC2462D69F4804D0 /* Generated */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		E2DE4594D2DB7DECE556B340 /* KeyboardUITests */ = {
+			isa = PBXGroup;
+			children = (
+				C5D58EB9B0323364380B787E /* KeyboardUITests.swift */,
+			);
+			path = KeyboardUITests;
 			sourceTree = "<group>";
 		};
 		EED135A56BE5CB48A0CDC85D = {
@@ -366,6 +386,24 @@
 			productReference = 4F41F6E0610FF0570D7A007A /* PrivateKeyboard.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F528601F24F21782453DA173 /* PrivateKeyboardUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C536FBB0D3978770601AE76B /* Build configuration list for PBXNativeTarget "PrivateKeyboardUITests" */;
+			buildPhases = (
+				5550AB30C8B75A3626983EF4 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00F7B0D5E9E094B49F424378 /* PBXTargetDependency */,
+			);
+			name = PrivateKeyboardUITests;
+			packageProductDependencies = (
+			);
+			productName = PrivateKeyboardUITests;
+			productReference = 0F7763D9907AC04519A6F8A1 /* PrivateKeyboardUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -374,6 +412,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					F528601F24F21782453DA173 = {
+						TestTargetID = E98195D861178AFAFBE0FA9F;
+					};
+				};
 			};
 			buildConfigurationList = DE8D773A239F58ACBE7FC7C7 /* Build configuration list for PBXProject "PrivateKeyboard" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -395,6 +438,7 @@
 				E98195D861178AFAFBE0FA9F /* PrivateKeyboard */,
 				E27D5CBC845F041C1F3FEF9F /* PrivateKeyboardKeyboard */,
 				6FF8E713BAB64E79CE1361E7 /* PrivateKeyboardTests */,
+				F528601F24F21782453DA173 /* PrivateKeyboardUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -454,6 +498,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5550AB30C8B75A3626983EF4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				840B076C73311C73493C834A /* KeyboardUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9FE3CA9B5AA0BA836B9070D8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -481,6 +533,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		00F7B0D5E9E094B49F424378 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E98195D861178AFAFBE0FA9F /* PrivateKeyboard */;
+			targetProxy = DB60F651836195BE1F697B79 /* PBXContainerItemProxy */;
+		};
 		C5E291D93837FDE554458756 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E98195D861178AFAFBE0FA9F /* PrivateKeyboard */;
@@ -494,6 +551,40 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		08491DB4E9E2B36448750515 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PrivateKeyboard;
+			};
+			name = Release;
+		};
+		0ED5E0A192D460B244AF9D5D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PrivateKeyboard;
+			};
+			name = Debug;
+		};
 		345AA4B704F673205D43417E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -759,6 +850,15 @@
 			buildConfigurations = (
 				B7BF796D38D31DEDB2B8E2CC /* Debug */,
 				DB35FD123D420039A195D9BC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C536FBB0D3978770601AE76B /* Build configuration list for PBXNativeTarget "PrivateKeyboardUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0ED5E0A192D460B244AF9D5D /* Debug */,
+				08491DB4E9E2B36448750515 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

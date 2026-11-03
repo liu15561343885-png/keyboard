@@ -49,6 +49,8 @@
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | Catalyst 产品链接 | 通过 | `scripts/build_catalyst_products.sh`：Host App 可执行文件 + Extension dylib |
 | Extension API 限制 | 通过 | Extension 以 `-application-extension` 编译/链接 |
+| 自定义键盘渲染 | 通过 | iPhone 16 Simulator 截图 `docs/screenshots/custom-keyboard.png` |
+| 端到端键盘输入 | 通过（条件） | 预启用 PrivateKeyboard 后，坐标输入 `nihao → 你好`；日志 `docs/evidence/simulator-keyboard-ui-test.log`；未启用时 XCTSkip |
 | 长按删除 | 通过 | 删除键存在 `UILongPressGestureRecognizer`，重复计时器实现连续删除 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、24 个候选的横向滚动、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
 | XCTest 测试方法执行 | 36/36 通过 | 本机 `swift test`；本机 iPhone 16 Simulator `xcodebuild test`；CI 均通过 |

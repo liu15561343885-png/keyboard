@@ -94,6 +94,7 @@ private final class CandidateCell: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         accessibilityLabel = "\(candidate.text)，\(candidate.detail)"
+        accessibilityIdentifier = "candidate-\(candidate.text)"
 
         firstLine.text = candidate.text
         firstLine.font = KeyboardTheme.candidateFont

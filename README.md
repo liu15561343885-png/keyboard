@@ -18,7 +18,8 @@ GitHub: https://github.com/liu15561343885-png/keyboard
 
 | 能力 | 状态 |
 |---|---|
-| 26 键 QWERTY 拼音布局、中文/英文/数字/符号/Emoji 页面 | iOS Simulator 构建通过；真机 UI 待验证 |
+| 26 键 QWERTY 拼音布局、中文/英文/数字/符号/Emoji 页面 | iOS Simulator 构建通过；自定义键盘已渲染 |
+| 模拟器端到端键盘输入 | `nihao → 你好` 通过（需先在设置启用）；真机待验证 |
 | 中文全拼、简拼、模糊拼音（z/zh、c/ch、s/sh、n/l、f/h 等） | 已实现并有单元测试 |
 | `nihaobeijing` 类连续拼音切分、多切分排序、整句词级组合 | 已实现，核心检查通过 |
 | 中文词语、单字、短语和部分互联网词汇 | 内置词库 123,586 条中文词条、464,222 条英中释义 |
@@ -238,6 +239,7 @@ swift run core-check Resources/Generated
 - 36 个 XCTest 测试方法：**36/36 通过**（本机 Xcode 16.4 `swift test`）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
 - 本机 Xcode 16.4：iOS Simulator `build` 通过，`test` 36/36 通过；
+- 模拟器自定义键盘：截图 [custom-keyboard.png](docs/screenshots/custom-keyboard.png)，坐标输入的 `nihao → 你好` UI 测试日志 [simulator-keyboard-ui-test.log](docs/evidence/simulator-keyboard-ui-test.log)；
 - GitHub Actions：iOS Simulator build、Xcode unit tests、Extension 符号检查通过（run 41601735713）；
 - 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏横向滚动、深色模式颜色解析、按键/候选回调、KeyboardViewController 实例化与 288 pt 高度）
 - 98 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**

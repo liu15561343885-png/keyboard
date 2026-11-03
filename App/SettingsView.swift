@@ -4,6 +4,8 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject private var model = AppModel()
     @State private var showClearConfirmation = false
+    @State private var testText = ""
+    @FocusState private var testFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -13,6 +15,16 @@ struct SettingsView: View {
                         .font(.headline)
                     Text("拼音、词库、语言模型、Core ML 排序和个人词频均在本机处理。键盘扩展没有网络代码。")
                         .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("键盘测试") {
+                    TextField("点击这里试用 PrivateKeyboard", text: $testText, axis: .vertical)
+                        .lineLimit(2...4)
+                        .focused($testFocused)
+                        .accessibilityIdentifier("keyboardTestField")
+                    Text("启用键盘后点此输入；数据只在本机处理。")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
@@ -103,6 +115,13 @@ struct SettingsView: View {
                 Button("清除", role: .destructive) { model.clearPersonalData() }
             } message: {
                 Text("此操作不可撤销，且不会上传任何数据。")
+            }
+            .onAppear {
+                if ProcessInfo.processInfo.arguments.contains("-KeyboardTestMode") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        testFocused = true
+                    }
+                }
             }
         }
     }

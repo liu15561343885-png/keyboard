@@ -24,6 +24,7 @@ final class KeyButton: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         accessibilityLabel = spec.label
+        accessibilityIdentifier = "key-\(spec.label)"
 
         label.text = spec.label
         label.textAlignment = .center
