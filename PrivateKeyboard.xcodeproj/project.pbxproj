@@ -398,8 +398,6 @@
 				00F7B0D5E9E094B49F424378 /* PBXTargetDependency */,
 			);
 			name = PrivateKeyboardUITests;
-			packageProductDependencies = (
-			);
 			productName = PrivateKeyboardUITests;
 			productReference = 0F7763D9907AC04519A6F8A1 /* PrivateKeyboardUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -413,6 +411,20 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					E98195D861178AFAFBE0FA9F = {
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
+					E27D5CBC845F041C1F3FEF9F = {
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
 					F528601F24F21782453DA173 = {
 						TestTargetID = E98195D861178AFAFBE0FA9F;
 					};
@@ -432,6 +444,7 @@
 				47980C01DD9D8FD7B6F0F917 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
+			productRefGroup = BF72F0A9B055A3C1A387FA81 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -561,7 +574,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = PrivateKeyboard;
@@ -578,7 +591,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = PrivateKeyboard;
@@ -590,6 +603,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/KeyboardExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = KeyboardExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -598,7 +612,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.keyboard;
 				PRODUCT_NAME = PrivateKeyboardKeyboard;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -670,6 +684,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = App/PrivateKeyboard.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -677,7 +692,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard;
 				PRODUCT_NAME = PrivateKeyboard;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -690,6 +705,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/KeyboardExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = KeyboardExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -698,7 +714,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.keyboard;
 				PRODUCT_NAME = PrivateKeyboardKeyboard;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -779,7 +795,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrivateKeyboard.app/PrivateKeyboard";
@@ -795,7 +811,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrivateKeyboard.app/PrivateKeyboard";
@@ -809,6 +825,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = App/PrivateKeyboard.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -816,7 +833,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.privatekeyboard.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liu15561343885.privatekeyboard;
 				PRODUCT_NAME = PrivateKeyboard;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

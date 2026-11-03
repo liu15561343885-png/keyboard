@@ -81,8 +81,8 @@ public enum SharedConstants {
     /// Replace this value together with both entitlements and the bundle IDs in
     /// `project.yml` before shipping. The extension never opens a network
     /// connection; App Groups are its only cross-process channel.
-    public static let appGroupIdentifier = "group.com.privatekeyboard.app"
-    public static let keyboardBundleIdentifier = "com.privatekeyboard.app.keyboard"
+    public static let appGroupIdentifier = "group.com.liu15561343885.privatekeyboard"
+    public static let keyboardBundleIdentifier = "com.liu15561343885.privatekeyboard.keyboard"
     public static let datasetDirectoryName = "PrivateKeyboardDatasets"
     public static let settingsSuiteFallback = "PrivateKeyboardSettings"
 }

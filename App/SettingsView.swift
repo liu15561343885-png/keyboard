@@ -29,7 +29,7 @@ struct SettingsView: View {
                 }
 
                 Section("启用键盘") {
-                    Text("设置 → 通用 → 键盘 → 键盘 → 添加新键盘 → PrivateKeyboard。无需“允许完全访问”。")
+                    Text("设置 → 通用 → 键盘 → 键盘 → 添加新键盘 → PrivateKeyboard。随后打开“允许完全访问”，用于读取 App Group 中的词库、设置和用户词频。")
                         .font(.callout)
                     Button("打开系统设置") { model.openSystemSettings() }
                 }

@@ -51,7 +51,7 @@ Core ML 模型随 App 本地运行，使用 `.cpuOnly` 配置；模型不访问�
 
 ## 键盘完全访问
 
-键盘 Info.plist 中 `RequestsOpenAccess = false`。本项目不需要“允许完全访问”，因为键盘扩展不联网，也不访问共享容器之外的敏感数据。
+键盘 Info.plist 中 `RequestsOpenAccess = true`。键盘需要“允许完全访问”才能读取 App Group 中的共享词库、设置和用户词频；键盘扩展本身仍不包含网络代码，也不上传任何数据。如果你不需要 App Group 共享，可以把该值改回 `false`，键盘将只使用扩展 bundle 内置数据。
 
 ## 更新网络请求的边界
 

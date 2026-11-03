@@ -40,6 +40,10 @@ GitHub: https://github.com/liu15561343885-png/keyboard
 
 未包含：语音输入、语音识别、在线输入法 API、广告/统计 SDK、第三方私有词库或接口。
 
+## 真机安装
+
+见 [docs/INSTALL_DEVICE.md](docs/INSTALL_DEVICE.md)。当前 bundle ID / App Group 已预配，但签名账号和 Team 必须由本机 Xcode 账号选择。
+
 ## 快速开始
 
 ### 环境
@@ -75,10 +79,10 @@ open PrivateKeyboard.xcodeproj
 
 1. 为 Host App 和 Keyboard Extension 选择同一个 Team；
 2. 把 `project.yml`、`SharedSupport.swift`、两个 entitlements 中的
-   `com.privatekeyboard.app` / `group.com.privatekeyboard.app` 改成你自己的唯一标识；
+   当前已预配为 `com.liu15561343885.privatekeyboard` / `group.com.liu15561343885.privatekeyboard`；如你的开发者账号需要不同标识，再同步修改 `project.yml`、两个 entitlements 和 `SharedConstants`；
 3. 确认两个 target 都启用 App Groups capability；
 4. 选择 iOS 17+ 真机或模拟器运行 Host App；
-5. 到 **设置 → 通用 → 键盘 → 键盘 → 添加新键盘 → PrivateKeyboard** 启用键盘。无需“允许完全访问”。
+5. 到 **设置 → 通用 → 键盘 → 键盘 → 添加新键盘 → PrivateKeyboard** 启用键盘，并打开“允许完全访问”（App Group 共享词库/设置/用户词频需要）。
 
 也可以在 CI/已安装 Xcode 的机器上执行：
 
@@ -259,7 +263,7 @@ swift run core-check Resources/Generated
 - 键盘扩展不链接 Updater/网络模块；
 - 用户词频只保存在 App Group，并设置不进入 iCloud/iTunes 备份；
 - 设置中可清除；
-- 无需“允许完全访问”；
+- 需要“允许完全访问”以读取 App Group；键盘扩展仍不包含任何网络代码；
 - 更新只由主 App 发起，且只下载公开词库/模型/许可证，不包含用户数据。
 
 详见 [PRIVACY.md](PRIVACY.md)。

@@ -26,12 +26,12 @@ else
   fail=1
 fi
 
-if /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:RequestsOpenAccess' KeyboardExtension/Info.plist 2>/dev/null | grep -qx 'false'; then
-  echo "keyboard full access: not requested"
-else
-  echo "keyboard full access: unexpected value" >&2
-  fail=1
-fi
+open_access=$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:RequestsOpenAccess' KeyboardExtension/Info.plist 2>/dev/null || true)
+case "$open_access" in
+  true) echo "keyboard full access: requested for App Group";;
+  false) echo "keyboard full access: not requested";;
+  *) echo "keyboard full access: unexpected value" >&2; fail=1;;
+esac
 
 # Fail if the generated Xcode project links the updater into the keyboard target.
 python3 scripts/check_project_privacy.py
