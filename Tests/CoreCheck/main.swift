@@ -125,7 +125,9 @@ let gold: [(String, String)] = [
     ("yixia", "一下"), ("feichang", "非常"), ("zhende", "真的"),
     ("zhibo", "直播"), ("duanshipin", "短视频"), ("biaoqingbao", "表情包"),
     ("liuliang", "流量"), ("zhongcao", "种草"), ("daka", "打卡"),
-    ("wangyou", "网友"), ("resou", "热搜")
+    ("wangyou", "网友"), ("resou", "热搜"),
+    ("tanmu", "弹幕"), ("neijuan", "内卷"), ("qingxujiazhi", "情绪价值"),
+    ("xianyanbao", "显眼包"), ("damoxing", "大模型"), ("duobaan", "多巴胺")
 ]
 var hit1 = 0, hit3 = 0, hit5 = 0
 var latencies: [Double] = []
