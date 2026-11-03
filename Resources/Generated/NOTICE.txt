@@ -1,0 +1,19 @@
+PrivateKeyboard bundled dataset 2026.11.1
+=========================================
+
+This directory contains project-built binary dictionaries, a language model, a
+Core ML micro-model, and metadata. It is not raw third-party source data.
+
+Sources and licenses:
+- CC-CEDICT (MDBG), CC BY-SA 4.0, https://www.mdbg.net/chinese/dictionary?page=cc-cedict
+- wordfreq 3.1.1 (Robyn Speer), data CC BY-SA 4.0, code Apache-2.0,
+  https://github.com/rspeer/wordfreq
+- Tatoeba Chinese sentences, CC BY 2.0 FR, https://tatoeba.org/
+  (only aggregate bigram/trigram counts are used)
+- jieba (Sun Junyi), MIT, https://github.com/fxsjy/jieba
+- Reviewed additions, project Apache-2.0
+
+See the repository THIRD_PARTY_LICENSES.md, licenses/, and
+DataSources/SOURCES.md for full attribution and modification notes.
+The application code is Apache-2.0. These data files are NOT covered by the
+code license; CC BY-SA 4.0 share-alike obligations apply to the derived data.

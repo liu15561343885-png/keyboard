@@ -1,0 +1,14 @@
+Tatoeba Chinese sentence corpus
+https://tatoeba.org/
+https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2
+
+Tatoeba sentences are made available under the Creative Commons
+Attribution 2.0 France license (CC BY 2.0 FR), unless a sentence is explicitly
+marked CC0.
+
+License: https://creativecommons.org/licenses/by/2.0/fr/
+Attribution: Tatoeba contributors, https://tatoeba.org/
+
+PrivateKeyboard uses only aggregate bigram and trigram counts derived from
+these sentences. Sentence text is not published by this repository or in the
+release assets. Counts are used only to score local input candidates.

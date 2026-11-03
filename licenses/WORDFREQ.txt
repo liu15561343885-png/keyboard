@@ -1,0 +1,11 @@
+wordfreq 3.1.1
+https://github.com/rspeer/wordfreq
+Author: Robyn Speer and contributors.
+
+The wordfreq Python code is distributed under the Apache License 2.0.
+The wordfreq data files are distributed under the Creative Commons
+Attribution-ShareAlike 4.0 International license (CC BY-SA 4.0).
+
+PrivateKeyboard uses numeric Chinese frequency estimates derived from
+wordfreq's data. No corpus text is redistributed. See
+THIRD_PARTY_LICENSES.md for the required attribution and source list.

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-and-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          xcrun simctl list devices available | head -30
+
+      - name: Build Swift package
+        run: swift build
+
+      - name: Privacy audit
+        run: ./scripts/check_privacy.sh
+
+      - name: Core end-to-end checks
+        run: swift run -c release core-check Resources/Generated
+
+      - name: Package tests (XCTest)
+        run: swift test
+
+      - name: Build iOS app and keyboard extension
+        run: |
+          xcodebuild \
+            -project PrivateKeyboard.xcodeproj \
+            -scheme PrivateKeyboard \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/PrivateKeyboardDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Run Xcode unit tests
+        run: |
+          xcodebuild \
+            -project PrivateKeyboard.xcodeproj \
+            -scheme PrivateKeyboard \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
+            -derivedDataPath /tmp/PrivateKeyboardDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+      - name: Verify extension does not link the updater product
+        run: |
+          APPEX=/tmp/PrivateKeyboardDerivedData/Build/Products/Debug-iphonesimulator/PrivateKeyboard.app/PlugIns/PrivateKeyboardKeyboard.appex
+          if [ -f "$APPEX/PrivateKeyboardKeyboard" ]; then
+            if nm -u "$APPEX/PrivateKeyboardKeyboard" | grep -q 'URLSession'; then
+              echo "::error::keyboard extension references URLSession"
+              exit 1
+            fi
+            echo "extension binary has no URLSession reference"
+          else
+            echo "::warning::extension binary not found for symbol check"
+          fi

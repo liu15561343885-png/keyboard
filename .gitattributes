@@ -1,0 +1,7 @@
+*.bin binary
+*.mlmodel binary
+*.png binary
+*.pbxproj text eol=lf
+*.swift text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

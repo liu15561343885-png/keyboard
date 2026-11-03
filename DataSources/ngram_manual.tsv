@@ -1,0 +1,26 @@
+# type	context_or_first	second_or_token	token_or_count	count
+bi	今天	天气	42
+bi	天气	很好	35
+bi	我	爱	18
+bi	爱	你	22
+bi	我	比	12
+bi	比	你	9
+bi	请问	你	16
+bi	谢谢	你	28
+bi	北京	欢迎	20
+bi	欢迎	你	18
+bi	对不起	我	8
+bi	没	关系	14
+bi	我们	一起	21
+bi	一起	去	17
+bi	你	好	33
+bi	您	好	12
+bi	今天	很	19
+bi	很	好	26
+tri	今天	天气	很好	22
+tri	我	爱	你	18
+tri	我	比	你	8
+tri	请问	你	好	10
+tri	北京	欢迎	你	12
+tri	我们	一起	去	9
+tri	谢谢	你	的	7

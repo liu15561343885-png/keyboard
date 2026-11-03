@@ -1,0 +1,37 @@
+{
+  "modelVersion": "micro-linear-1",
+  "fileName": "candidate_scorer.mlmodel",
+  "sha256": "f1ec5f0b465e276be670ddac06fe1466809717604a16862bd9dd181b07b17862",
+  "size": 1387,
+  "createdAt": "2026-11-03T05:11:08.652750+00:00",
+  "features": [
+    "baseFrequency",
+    "userFrequency",
+    "recency",
+    "bigram",
+    "trigram",
+    "pinyinMatch",
+    "translationAvailability",
+    "candidateLength",
+    "contextLength"
+  ],
+  "output": "score",
+  "framework": "Core ML (coremltools 8.3.0)",
+  "training": "synthetic_local_priors",
+  "samples": 40000,
+  "r2": 0.986595,
+  "coefficients": [
+    0.17963,
+    0.219904,
+    0.099858,
+    0.119648,
+    0.14937,
+    0.299738,
+    0.029556,
+    -0.019902,
+    0.034928
+  ],
+  "intercept": -0.051647,
+  "privacy": "No user input, keystrokes, context, speech data, or personal word frequencies were used.",
+  "license": "Apache-2.0"
+}

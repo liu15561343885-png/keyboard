@@ -1,0 +1,18 @@
+# Reviewed additions/overrides. Authored for PrivateKeyboard, no third-party input-method data.
+# simplified	traditional	pinyin	pos	definition
+我爱你	我愛你	wo ai ni	phr.	I love you	200000
+我比你	我比你	wo bi ni	phr.	more ... than you	50000
+卧病	臥病	wo bing	v.	be bedridden	20000
+北京欢迎你	北京歡迎你	bei jing huan ying ni	phr.	Welcome to Beijing	10000
+点赞	點讚	dian zan	v.	to like (a post)	50000
+热搜	熱搜	re sou	n.	trending search	20000
+短视频	短視頻	duan shi pin	n.	short video	30000
+表情包	表情包	biao qing bao	n.	reaction image; meme	20000
+种草	種草	zhong cao	v.	to recommend a product; lit. plant grass	10000
+打卡	打卡	da ka	v.	to check in; to clock in	30000
+输入法	輸入法	shu ru fa	n.	input method	50000
+词库	詞庫	ci ku	n.	lexicon; word database	20000
+隐私	隱私	yin si	n.	privacy	30000
+本地	本地	ben di	adj.	local	30000
+离线	離線	li xian	adj.	offline	20000
+端到端	端到端	duan dao duan	adj.	end-to-end	10000

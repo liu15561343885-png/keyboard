@@ -1,0 +1,297 @@
+# simplified	part_of_speech	definition	source
+我	pron.	I; me; my	CC-CEDICT/seed
+你	pron.	you (informal, as opposed to courteous 您[nin2])	CC-CEDICT/seed
+他	pron.	(third-person singular) (since the early 20th century, usu. male) he; him; his; (bound form) other; another; some other (as in 他日[ta1 ri4] and 他人[ta1 ren2])	CC-CEDICT/seed
+她	pron.	she	CC-CEDICT/seed
+我们	pron.	we; us; ourselves	CC-CEDICT/seed
+你们	pron.	you (plural)	CC-CEDICT/seed
+他们	pron.	they; them	CC-CEDICT/seed
+你好	phr.	hello; hi	CC-CEDICT/seed
+您好	phr.	hello (polite)	CC-CEDICT/seed
+爱	v.	to love; to be fond of; to like; affection	CC-CEDICT/seed
+我爱你	phr.	I love you	CC-CEDICT/seed
+喜欢	v.	to like; to be fond of; to be happy; to be pleased	CC-CEDICT/seed
+谢谢	phr.	to thank; thanks	CC-CEDICT/seed
+再见	phr.	goodbye; see you again later	CC-CEDICT/seed
+北京	n.	Beijing municipality, capital of the People's Republic of China (short name 京[Jing1])	CC-CEDICT/seed
+中国	n.	China	CC-CEDICT/seed
+上海	n.	Shanghai municipality (short name 滬|沪[Hu4])	CC-CEDICT/seed
+广州	n.	see 廣州市|广州市[Guang3 zhou1 Shi4]	CC-CEDICT/seed
+深圳	n.	see 深圳市[Shen1 zhen4 Shi4]	CC-CEDICT/seed
+今天	n.	today; the present time; now	CC-CEDICT/seed
+明天	n.	tomorrow	CC-CEDICT/seed
+昨天	n.	yesterday	CC-CEDICT/seed
+现在	n.	now; at present; currently	CC-CEDICT/seed
+时间	n.	(concept of) time; (duration of) time	CC-CEDICT/seed
+天气	n.	weather	CC-CEDICT/seed
+很好	adj.	very good	CC-CEDICT/seed
+好的	phr.	OK; all right	CC-CEDICT/seed
+不	adv.	no; not so; (bound form) not; un-	CC-CEDICT/seed
+是	v.	to be (followed by substantives only); correct; right; true	CC-CEDICT/seed
+有	v.	to have; there is; (bound form) having; with; -ful; -ed; -al (as in 有意[you3 yi4] intentional)	CC-CEDICT/seed
+没有	v.	haven't; hasn't	CC-CEDICT/seed
+可以	v.	can; may; to be able to; possible; permissible	CC-CEDICT/seed
+请	v.	to ask; to invite	CC-CEDICT/seed
+请问	v.	Excuse me, may I ask...?	CC-CEDICT/seed
+什么	pron.	what?; something; anything	CC-CEDICT/seed
+怎么	adv.	how?; what?	CC-CEDICT/seed
+为什么	adv.	why?; for what reason?	CC-CEDICT/seed
+哪里	pron.	where?; somewhere	CC-CEDICT/seed
+这个	pron.	(pronoun) this; (adjective) this	CC-CEDICT/seed
+那个	pron.	that one; that thing	CC-CEDICT/seed
+一个	num.	a; an; one; the whole (afternoon, summer vacation etc)	CC-CEDICT/seed
+人	n.	person; people; CL:個|个[ge4],位[wei4],名[ming2]	CC-CEDICT/seed
+朋友	n.	friend; CL:個|个[ge4],位[wei4]	CC-CEDICT/seed
+家	n.	used in 傢伙|家伙[jia1 huo5] and 傢俱|家俱[jia1 ju4]	CC-CEDICT/seed
+工作	n.	to work; (of a machine) to operate	CC-CEDICT/seed
+学习	v.	to learn; to study	CC-CEDICT/seed
+学校	n.	school; CL:所[suo3]	CC-CEDICT/seed
+学生	n.	student; schoolchild	CC-CEDICT/seed
+老师	n.	teacher	CC-CEDICT/seed
+手机	n.	cell phone; mobile phone; CL:部[bu4],臺|台[tai2]	CC-CEDICT/seed
+电脑	n.	computer; CL:臺|台[tai2]	CC-CEDICT/seed
+网络	n.	network; Internet	CC-CEDICT/seed
+输入法	n.	input method	CC-CEDICT/seed
+键盘	n.	keyboard	CC-CEDICT/seed
+中文	n.	Chinese language	CC-CEDICT/seed
+英文	n.	English (language)	CC-CEDICT/seed
+翻译	n.	to translate; to interpret	CC-CEDICT/seed
+词库	n.	word stock; lexicon	CC-CEDICT/seed
+隐私	n.	secrets; private business	CC-CEDICT/seed
+安全	adj.	safe; secure; safety; security	CC-CEDICT/seed
+本地	n.	local; this locality	CC-CEDICT/seed
+在线	n.	online; connected to the Internet; (fig.) (coll.) (of a person) mentally focused; engaged; (of skills, performance etc) sharp; on point; functioning at a high level	CC-CEDICT/seed
+更新	v.	to replace the old with new; to renew	CC-CEDICT/seed
+版本	n.	version; edition	CC-CEDICT/seed
+对不起	phr.	I'm sorry; excuse me; I beg your pardon; to let (sb) down; to disappoint	CC-CEDICT/seed
+没关系	phr.	it doesn't matter	CC-CEDICT/seed
+吃饭	v.	to have a meal; to eat	CC-CEDICT/seed
+喝水	v.	drink water	CC-CEDICT/seed
+睡觉	v.	to go to bed; to sleep	CC-CEDICT/seed
+起床	v.	to get out of bed; to get up	CC-CEDICT/seed
+上班	v.	to go to work; to be on duty	CC-CEDICT/seed
+下班	v.	to finish work; to get off work; next service (train, bus etc)	CC-CEDICT/seed
+回家	v.	to return home	CC-CEDICT/seed
+看电影	v.	watch a movie	CC-CEDICT/seed
+听音乐	v.	listen to music	CC-CEDICT/seed
+玩游戏	v.	play games	CC-CEDICT/seed
+卧病	v.	be bedridden	CC-CEDICT/seed
+生病	v.	to fall ill	CC-CEDICT/seed
+医院	n.	hospital; CL:所[suo3],家[jia1],座[zuo4]	CC-CEDICT/seed
+医生	n.	doctor; medical practitioner	CC-CEDICT/seed
+药	n.	leaf of the iris; variant of 藥|药[yao4]	CC-CEDICT/seed
+帮助	v.	assistance; aid; to help; to assist	CC-CEDICT/seed
+需要	v.	to need; to want; to demand; to require; needs	CC-CEDICT/seed
+知道	v.	to know; to become aware of; also pr. [zhi1dao5]	CC-CEDICT/seed
+觉得	v.	to think that ...; to feel that ...; to feel (uncomfortable etc)	CC-CEDICT/seed
+认为	v.	to believe; to think; to consider; to feel	CC-CEDICT/seed
+希望	v.	to hope; a hope; a wish	CC-CEDICT/seed
+开始	v.	to begin; to start; beginning; start	CC-CEDICT/seed
+结束	v.	to end; to finish; to conclude	CC-CEDICT/seed
+已经	adv.	already	CC-CEDICT/seed
+正在	adv.	to be in the process of (doing sth); to be currently ...-ing	CC-CEDICT/seed
+可能	adv.	might (happen); possible	CC-CEDICT/seed
+但是	conj.	but; however	CC-CEDICT/seed
+因为	conj.	because; owing to; on account of	CC-CEDICT/seed
+所以	conj.	therefore; as a result	CC-CEDICT/seed
+如果	conj.	if; in case; in the event that	CC-CEDICT/seed
+还是	conj.	still (as before); had better	CC-CEDICT/seed
+或者	conj.	or; possibly; maybe; perhaps	CC-CEDICT/seed
+以及	conj.	and; as well as	CC-CEDICT/seed
+而且	conj.	(not only ...) but also; moreover; in addition; furthermore	CC-CEDICT/seed
+虽然	conj.	although; even though (often used correlatively with 可是[ke3 shi4] or 但是[dan4 shi4] etc)	CC-CEDICT/seed
+然后	adv.	then; after that; afterwards	CC-CEDICT/seed
+最后	adv.	final; last; ultimate; finally; in the end	CC-CEDICT/seed
+一起	adv.	(in) the same place; together; in company (with)	CC-CEDICT/seed
+一点	adv.	a bit; a little bit; (used in negative expressions) (not) the least bit	CC-CEDICT/seed
+一下	adv.	(after a verb) a bit; a little (indicating brief duration, or softening the tone, or suggesting giving sth a try); all at once; suddenly	CC-CEDICT/seed
+非常	adv.	very; really; unusual; extraordinary	CC-CEDICT/seed
+真的	adv.	really; truly; indeed; real; true; genuine	CC-CEDICT/seed
+很	adv.	very; quite; (also, often used before an adjective without intensifying its meaning, i.e. as a meaningless syntactic element)	CC-CEDICT/seed
+太	adv.	highest; greatest	CC-CEDICT/seed
+更	adv.	to change or replace; to experience	CC-CEDICT/seed
+最	adv.	variant of 最[zui4]	CC-CEDICT/seed
+能	v.	surname Neng	CC-CEDICT/seed
+会	v.	can; to have the skill; to know how to; to be likely to; to be sure to	CC-CEDICT/seed
+要	v.	(bound form) to demand; to coerce	CC-CEDICT/seed
+想	v.	to think (about); to think of; to devise	CC-CEDICT/seed
+去	v.	to go; to go to (a place)	CC-CEDICT/seed
+来	v.	to come; (used as a substitute for a more specific verb)	CC-CEDICT/seed
+看	v.	to look after; to take care of	CC-CEDICT/seed
+听	v.	smile (archaic)	CC-CEDICT/seed
+说	v.	to persuade	CC-CEDICT/seed
+读	v.	comma; phrase marked by pause	CC-CEDICT/seed
+写	v.	to write	CC-CEDICT/seed
+买	v.	to buy; to purchase	CC-CEDICT/seed
+卖	v.	to sell; to betray	CC-CEDICT/seed
+吃	v.	to eat; to consume; to eat at (a cafeteria etc)	CC-CEDICT/seed
+喝	v.	to drink; variant of 嗬[he1]	CC-CEDICT/seed
+玩	v.	to play; to have fun	CC-CEDICT/seed
+点赞	v.	to like (a post)	CC-CEDICT/seed
+网友	n.	online friend; netizen; Internet user	CC-CEDICT/seed
+热搜	n.	trending search	CC-CEDICT/seed
+直播	n.	(TV, radio) to broadcast live; live broadcast	CC-CEDICT/seed
+短视频	n.	short video	CC-CEDICT/seed
+表情包	n.	reaction image; meme	CC-CEDICT/seed
+流量	n.	flow rate; throughput of passengers; volume of traffic; (hydrology) discharge	CC-CEDICT/seed
+种草	v.	to recommend a product; lit. plant grass	CC-CEDICT/seed
+打卡	v.	to check in; to clock in	CC-CEDICT/seed
+我比你	phr.	more ... than you	CC-CEDICT/seed
+北京欢迎你	phr.	Welcome to Beijing	CC-CEDICT/seed
+你好吗	phr.	how are you?	CC-CEDICT/seed
+谢谢你	phr.	thank you	CC-CEDICT/seed
+没问题	phr.	no problem	CC-CEDICT/seed
+们	n.	plural marker for pronouns, and nouns referring to individuals	CC-CEDICT/seed
+好	n.	good; appropriate; proper	CC-CEDICT/seed
+您	n.	you (courteous, as opposed to informal 你[ni3])	CC-CEDICT/seed
+喜	v.	to be fond of; to like	CC-CEDICT/seed
+欢	n.	variant of 歡|欢[huan1]	CC-CEDICT/seed
+谢	n.	surname Xie	CC-CEDICT/seed
+再	n.	again; once more; re-; further; beyond this point of time	CC-CEDICT/seed
+见	v.	to see; to meet	CC-CEDICT/seed
+北	n.	north; (classical) to be defeated	CC-CEDICT/seed
+京	n.	surname Jing; short name for Beijing 北京[Bei3 jing1]	CC-CEDICT/seed
+中	n.	(bound form) China; Chinese; surname Zhong	CC-CEDICT/seed
+国	n.	surname Guo	CC-CEDICT/seed
+上	n.	used in 上聲|上声[shang3 sheng1]	CC-CEDICT/seed
+海	n.	surname Hai	CC-CEDICT/seed
+广	n.	"house on a cliff" radical in Chinese characters (Kangxi radical 53), occurring in 店, 序, 底 etc	CC-CEDICT/seed
+州	n.	prefecture; (old) province	CC-CEDICT/seed
+深	n.	old variant of 深[shen1]	CC-CEDICT/seed
+圳	n.	(dialect) drainage ditch between fields (Taiwan pr. [zun4]); used in place names, notably 深圳[Shen1 zhen4]	CC-CEDICT/seed
+今	n.	now; the present time	CC-CEDICT/seed
+天	n.	day; sky	CC-CEDICT/seed
+明	n.	Ming Dynasty (1368–1644); surname Ming	CC-CEDICT/seed
+昨	n.	yesterday	CC-CEDICT/seed
+现	v.	to appear; present	CC-CEDICT/seed
+在	v.	to exist; to be alive; (of sb or sth) to be (located) at	CC-CEDICT/seed
+时	n.	old variant of 時|时[shi2]	CC-CEDICT/seed
+间	n.	between; among	CC-CEDICT/seed
+气	n.	gas; air; smell	CC-CEDICT/seed
+的	n.	of; ~'s (possessive particle); (used after an attribute when it modifies a noun)	CC-CEDICT/seed
+没	n.	(negative prefix for verbs) have not; not	CC-CEDICT/seed
+可	v.	(prefix) can; may; able to; -able; to approve; to permit	CC-CEDICT/seed
+以	n.	old variant of 以[yi3]	CC-CEDICT/seed
+问	v.	to ask; to inquire	CC-CEDICT/seed
+什	n.	what	CC-CEDICT/seed
+么	n.	exclamatory final particle	CC-CEDICT/seed
+怎	n.	how	CC-CEDICT/seed
+为	v.	as (in the capacity of); to take sth as	CC-CEDICT/seed
+哪	n.	how; which	CC-CEDICT/seed
+里	n.	variant of 裡|里[li3]	CC-CEDICT/seed
+这	n.	(pronoun) this; these; (bound form) this; the (followed by a noun)	CC-CEDICT/seed
+个	n.	used in 自個兒|自个儿[zi4 ge3 r5]	CC-CEDICT/seed
+那	n.	surname Na	CC-CEDICT/seed
+一	n.	one; single	CC-CEDICT/seed
+朋	n.	friend	CC-CEDICT/seed
+友	n.	friend	CC-CEDICT/seed
+工	n.	work; worker	CC-CEDICT/seed
+作	n.	(bound form) worker; (bound form) workshop	CC-CEDICT/seed
+学	v.	to learn; to study	CC-CEDICT/seed
+习	n.	surname Xi	CC-CEDICT/seed
+校	v.	to check; to collate; to proofread	CC-CEDICT/seed
+生	v.	to grow; to give birth; to produce; to be born; to arise; to occur	CC-CEDICT/seed
+老	n.	prefix used before the surname of a person or a numeral indicating the order of birth of the children in a family or to indicate affection or familiarity; old (of people)	CC-CEDICT/seed
+师	n.	surname Shi	CC-CEDICT/seed
+手	n.	hand; (formal) to hold	CC-CEDICT/seed
+机	n.	surname Ji	CC-CEDICT/seed
+电	n.	lightning; electricity	CC-CEDICT/seed
+脑	n.	brain; mind	CC-CEDICT/seed
+网	n.	net; web; network	CC-CEDICT/seed
+络	n.	small net	CC-CEDICT/seed
+输	v.	to lose; to be beaten; (bound form) to transport	CC-CEDICT/seed
+入	v.	to enter; to go into; to join; to become a member of	CC-CEDICT/seed
+法	n.	variant of 法[fa3]	CC-CEDICT/seed
+键	n.	key (on a piano or computer keyboard); button (on a mouse or other device)	CC-CEDICT/seed
+盘	n.	tray; plate; dish; (finance) (bound form) market prices	CC-CEDICT/seed
+文	n.	surname Wen	CC-CEDICT/seed
+英	n.	United Kingdom; British	CC-CEDICT/seed
+翻	v.	to turn over; to flip over	CC-CEDICT/seed
+译	v.	to translate; to interpret	CC-CEDICT/seed
+词	n.	old variant of 詞|词[ci2]	CC-CEDICT/seed
+库	n.	warehouse; storehouse	CC-CEDICT/seed
+隐	n.	(bound form) secret; hidden; concealed; crypto-	CC-CEDICT/seed
+私	n.	(bound form) personal; private; (bound form) selfish	CC-CEDICT/seed
+安	n.	surname An	CC-CEDICT/seed
+全	n.	surname Quan	CC-CEDICT/seed
+本	n.	(bound form) root; stem; (bound form) origin; source	CC-CEDICT/seed
+地	adj.	-ly; structural particle: used before a verb or adjective, linking it to preceding modifying adverbial adjunct	CC-CEDICT/seed
+线	n.	variant of 線|线[xian4]	CC-CEDICT/seed
+新	n.	abbr. for Xinjiang 新疆[Xin1 jiang1]; abbr. for Singapore 新加坡[Xin1 jia1 po1]	CC-CEDICT/seed
+版	adj.	a register; block of printing	CC-CEDICT/seed
+对	n.	right; correct; towards; at; for	CC-CEDICT/seed
+起	v.	to rise; to raise	CC-CEDICT/seed
+关	n.	surname Guan	CC-CEDICT/seed
+系	v.	to connect; to relate to	CC-CEDICT/seed
+饭	n.	cooked rice; CL:碗[wan3]	CC-CEDICT/seed
+水	n.	surname Shui; Shui ethnic group	CC-CEDICT/seed
+睡	v.	to sleep; to lie down	CC-CEDICT/seed
+觉	adj.	a nap; a sleep	CC-CEDICT/seed
+床	n.	bed; couch (furniture that one can lie down on) (CL:張|张[zhang1]); bed; bottom (of rivers, oceans, gardens etc)	CC-CEDICT/seed
+班	n.	surname Ban	CC-CEDICT/seed
+下	n.	down; downwards	CC-CEDICT/seed
+回	n.	Hui ethnic group (Chinese Muslims)	CC-CEDICT/seed
+影	n.	picture; image	CC-CEDICT/seed
+音	n.	sound; noise	CC-CEDICT/seed
+乐	n.	surname Le	CC-CEDICT/seed
+游	n.	surname You	CC-CEDICT/seed
+戏	n.	variant of 戲|戏[xi4]	CC-CEDICT/seed
+卧	v.	to lie; to crouch	CC-CEDICT/seed
+病	n.	illness; CL:場|场[chang2]	CC-CEDICT/seed
+医	n.	medical; medicine	CC-CEDICT/seed
+院	n.	courtyard; institution	CC-CEDICT/seed
+帮	n.	old variant of 幫|帮[bang1]	CC-CEDICT/seed
+助	v.	to help; to assist	CC-CEDICT/seed
+需	v.	to require; to need	CC-CEDICT/seed
+知	v.	to know; to be aware	CC-CEDICT/seed
+道	n.	road; path (CL:條|条[tiao2],股[gu3]); (bound form) way; reason; principle	CC-CEDICT/seed
+得	v.	to obtain; to get	CC-CEDICT/seed
+认	v.	to recognize; to know	CC-CEDICT/seed
+希	v.	to hope; to admire	CC-CEDICT/seed
+望	v.	full moon; to hope	CC-CEDICT/seed
+开	v.	to open (transitive or intransitive); (of ships, vehicles, troops etc) to start	CC-CEDICT/seed
+始	v.	to begin; to start	CC-CEDICT/seed
+结	n.	(of a plant) to produce (fruit or seeds); Taiwan pr. [jie2]	CC-CEDICT/seed
+束	n.	surname Shu	CC-CEDICT/seed
+已	v.	already; (bound form) to stop; to cease; to end	CC-CEDICT/seed
+经	n.	surname Jing	CC-CEDICT/seed
+正	n.	first month of the lunar year	CC-CEDICT/seed
+但	n.	but; yet; however; still; merely; only; just	CC-CEDICT/seed
+因	n.	old variant of 因[yin1]	CC-CEDICT/seed
+所	n.	actually; place	CC-CEDICT/seed
+如	n.	as; as if	CC-CEDICT/seed
+果	n.	fruit; result	CC-CEDICT/seed
+还	n.	surname Huan	CC-CEDICT/seed
+或	n.	maybe; perhaps	CC-CEDICT/seed
+者	adj.	(after a verb or adjective) one who (is) ...; (after a noun) person involved in ...	CC-CEDICT/seed
+及	v.	and; to reach	CC-CEDICT/seed
+而	n.	and; as well as	CC-CEDICT/seed
+且	n.	and; moreover	CC-CEDICT/seed
+虽	n.	although; even though	CC-CEDICT/seed
+然	n.	correct; right	CC-CEDICT/seed
+后	n.	surname Hou	CC-CEDICT/seed
+点	v.	to touch briefly; to tap; to mark with a dot; to check off (on a list)	CC-CEDICT/seed
+非	n.	abbr. for 非洲[Fei1 zhou1], Africa	CC-CEDICT/seed
+常	n.	surname Chang	CC-CEDICT/seed
+真	n.	really; truly	CC-CEDICT/seed
+赞	n.	variant of 讚|赞[zan4]	CC-CEDICT/seed
+热	v.	to warm up; to heat up	CC-CEDICT/seed
+搜	v.	to search; variant of 蒐|搜[sou1]	CC-CEDICT/seed
+直	n.	surname Zhi; Zhi (c. 2000 BC), fifth of the legendary Flame Emperors 炎帝[Yan2 di4] descended from Shennong 神農|神农[Shen2 nong2] Farmer God	CC-CEDICT/seed
+播	v.	(bound form) to sow (seeds); to spread (ideas, rumors etc); to broadcast (radio signals etc); Taiwan pr. [bo4]	CC-CEDICT/seed
+短	n.	short; brief	CC-CEDICT/seed
+视	n.	variant of 視|视[shi4]; variant of 示[shi4]	CC-CEDICT/seed
+频	n.	frequency; frequently	CC-CEDICT/seed
+表	n.	exterior surface; family relationship via females	CC-CEDICT/seed
+情	n.	(bound form) feelings; emotion; sentiment; passion; (bound form) situation; condition	CC-CEDICT/seed
+包	n.	surname Bao	CC-CEDICT/seed
+流	v.	to flow; to disseminate	CC-CEDICT/seed
+量	v.	to measure	CC-CEDICT/seed
+种	n.	seed; species	CC-CEDICT/seed
+草	n.	variant of 草[cao3]	CC-CEDICT/seed
+打	n.	(loanword) dozen; Taiwan pr. [da3]	CC-CEDICT/seed
+卡	v.	to stop; to block	CC-CEDICT/seed
+比	n.	Belgium; Belgian	CC-CEDICT/seed
+迎	v.	to welcome; to meet; to forge ahead (esp. in the face of difficulties); to meet face to face	CC-CEDICT/seed
+吗	n.	(coll.) what?	CC-CEDICT/seed
+题	n.	surname Ti	CC-CEDICT/seed

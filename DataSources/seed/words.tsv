@@ -1,0 +1,299 @@
+# Development seed derived from CC-CEDICT and manual review.
+# License: CC BY-SA 4.0 for CC-CEDICT-derived fields; see THIRD_PARTY_LICENSES.md.
+simplified	traditional	pinyin	frequency
+我	我	wo	950000
+你	你	ni	850000
+他	他	ta	700000
+她	她	ta	500000
+我们	我們	wo men	600000
+你们	你們	ni men	300000
+他们	他們	ta men	400000
+你好	你好	ni hao	200000
+您好	您好	nin hao	100000
+爱	愛	ai	300000
+我爱你	愛你	wo ai ni	50000
+喜欢	喜歡	xi huan	250000
+谢谢	謝謝	xie xie	300000
+再见	再見	zai jian	200000
+北京	北京	bei jing	300000
+中国	中國	zhong guo	500000
+上海	上海	shang hai	250000
+广州	廣州	guang zhou	150000
+深圳	深圳	shen zhen	180000
+今天	今天	jin tian	300000
+明天	明天	ming tian	200000
+昨天	昨天	zuo tian	150000
+现在	現在	xian zai	400000
+时间	時間	shi jian	350000
+天气	天氣	tian qi	250000
+很好	很好	hen hao	200000
+好的	好的	hao de	300000
+不	不	bu	500000
+是	是	shi	800000
+有	有	you	700000
+没有	沒有	mei you	500000
+可以	可以	ke yi	400000
+请	請	qing	400000
+请问	請問	qing wen	150000
+什么	什麼	shen me	500000
+怎么	怎麼	zen me	400000
+为什么	為什麼	wei shen me	300000
+哪里	哪裏	na li	200000
+这个	這個	zhe ge	400000
+那个	那個	na ge	300000
+一个	一個	yi ge	400000
+人	人	ren	500000
+朋友	朋友	peng you	300000
+家	傢	jia	300000
+工作	工作	gong zuo	350000
+学习	學習	xue xi	300000
+学校	學校	xue xiao	200000
+学生	學生	xue sheng	250000
+老师	老師	lao shi	200000
+手机	手機	shou ji	300000
+电脑	電腦	dian nao	250000
+网络	網絡	wang luo	300000
+输入法	輸入法	shu ru fa	100000
+键盘	鍵盤	jian pan	200000
+中文	中文	zhong wen	250000
+英文	英文	ying wen	200000
+翻译	翻譯	fan yi	150000
+词库	詞庫	ci ku	30000
+隐私	隱私	yin si	80000
+安全	安全	an quan	200000
+本地	本地	ben di	100000
+在线	在線	zai xian	150000
+更新	更新	geng xin	150000
+版本	版本	ban ben	100000
+对不起	對不起	dui bu qi	200000
+没关系	沒關係	mei guan xi	150000
+吃饭	吃飯	chi fan	200000
+喝水	喝水	he shui	100000
+睡觉	睡覺	shui jiao	200000
+起床	起床	qi chuang	150000
+上班	上班	shang ban	200000
+下班	下班	xia ban	180000
+回家	回家	hui jia	200000
+看电影	看電影	kan dian ying	100000
+听音乐	聽音樂	ting yin yue	80000
+玩游戏	玩遊戲	wan you xi	100000
+卧病	臥病	wo bing	20000
+生病	生病	sheng bing	150000
+医院	醫院	yi yuan	150000
+医生	醫生	yi sheng	150000
+药	葯	yao	100000
+帮助	幫助	bang zhu	200000
+需要	需要	xu yao	300000
+知道	知道	zhi dao	400000
+觉得	覺得	jue de	350000
+认为	認為	ren wei	300000
+希望	希望	xi wang	250000
+开始	開始	kai shi	300000
+结束	結束	jie shu	200000
+已经	已經	yi jing	400000
+正在	正在	zheng zai	300000
+可能	可能	ke neng	350000
+但是	但是	dan shi	400000
+因为	因為	yin wei	400000
+所以	所以	suo yi	400000
+如果	如果	ru guo	300000
+还是	還是	hai shi	300000
+或者	或者	huo zhe	200000
+以及	以及	yi ji	250000
+而且	而且	er qie	200000
+虽然	雖然	sui ran	200000
+然后	然後	ran hou	300000
+最后	最後	zui hou	250000
+一起	一起	yi qi	300000
+一点	一點	yi dian	250000
+一下	一下	yi xia	250000
+非常	非常	fei chang	300000
+真的	真的	zhen de	300000
+很	很	hen	600000
+太	太	tai	400000
+更	更	geng	300000
+最	㝡	zui	400000
+能	能	neng	500000
+会	會	hui	500000
+要	要	yao	600000
+想	想	xiang	500000
+去	去	qu	500000
+来	來	lai	500000
+看	看	kan	500000
+听	听	yin	300000
+说	說	shui	500000
+读	讀	dou	150000
+写	寫	xie	200000
+买	買	mai	250000
+卖	賣	mai	150000
+吃	吃	chi	300000
+喝	喝	he	200000
+玩	玩	wan	200000
+点赞	點讚	dian zan	100000
+网友	網友	wang you	80000
+热搜	熱搜	re sou	50000
+直播	直播	zhi bo	150000
+短视频	短視頻	duan shi pin	120000
+表情包	表情包	biao qing bao	60000
+流量	流量	liu liang	150000
+种草	種草	zhong cao	40000
+打卡	打卡	da ka	80000
+我比你	我比你	wo bi ni	10000
+北京欢迎你	北京歡迎你	bei jing huan ying ni	8000
+你好吗	你好嗎	ni hao ma	60000
+谢谢你	謝謝你	xie xie ni	90000
+没问题	沒問題	mei wen ti	70000
+们	們	men	20000
+好	好	hao	20000
+您	您	nin	20000
+喜	喜	xi	20000
+欢	懽	huan	20000
+谢	謝	xie	20000
+再	再	zai	20000
+见	見	jian	20000
+北	北	bei	20000
+京	京	jing	20000
+中	中	zhong	20000
+国	國	guo	20000
+上	上	shang	20000
+海	海	hai	20000
+广	广	yan	20000
+州	州	zhou	20000
+深	㴱	shen	20000
+圳	圳	zhen	20000
+今	今	jin	20000
+天	天	tian	20000
+明	明	ming	20000
+昨	昨	zuo	20000
+现	現	xian	20000
+在	在	zai	20000
+时	旹	shi	20000
+间	間	jian	20000
+气	氣	qi	20000
+的	的	de	20000
+没	沒	mei	20000
+可	可	ke	20000
+以	㕥	yi	20000
+问	問	wen	20000
+什	什	shen	20000
+么	麼	ma	20000
+怎	怎	zen	20000
+为	為	wei	20000
+哪	哪	na	20000
+里	裏	li	20000
+这	這	zhe	20000
+个	個	ge	20000
+那	那	na	20000
+一	一	yi	20000
+朋	朋	peng	20000
+友	友	you	20000
+工	工	gong	20000
+作	作	zuo	20000
+学	學	xue	20000
+习	習	xi	20000
+校	校	jiao	20000
+生	生	sheng	20000
+老	老	lao	20000
+师	師	shi	20000
+手	手	shou	20000
+机	機	ji	20000
+电	電	dian	20000
+脑	腦	nao	20000
+网	網	wang	20000
+络	絡	lao	20000
+输	輸	shu	20000
+入	入	ru	20000
+法	㳒	fa	20000
+键	鍵	jian	20000
+盘	盤	pan	20000
+文	文	wen	20000
+英	英	ying	20000
+翻	翻	fan	20000
+译	譯	yi	20000
+词	䛐	ci	20000
+库	庫	ku	20000
+隐	隱	yin	20000
+私	私	si	20000
+安	安	an	20000
+全	全	quan	20000
+本	本	ben	20000
+地	地	de	20000
+线	綫	xian	20000
+新	新	xin	20000
+版	版	ban	20000
+对	對	dui	20000
+起	起	qi	20000
+关	關	guan	20000
+系	係	xi	20000
+饭	飯	fan	20000
+水	水	shui	20000
+睡	睡	shui	20000
+觉	覺	jiao	20000
+床	床	chuang	20000
+班	班	ban	20000
+下	下	xia	20000
+回	回	hui	20000
+影	影	ying	20000
+音	音	yin	20000
+乐	樂	le	20000
+游	游	you	20000
+戏	戯	xi	20000
+卧	臥	wo	20000
+病	病	bing	20000
+医	醫	yi	20000
+院	院	yuan	20000
+帮	幇	bang	20000
+助	助	zhu	20000
+需	需	xu	20000
+知	知	zhi	20000
+道	道	dao	20000
+得	得	de	20000
+认	認	ren	20000
+希	希	xi	20000
+望	望	wang	20000
+开	開	kai	20000
+始	始	shi	20000
+结	結	jie	20000
+束	束	shu	20000
+已	已	yi	20000
+经	經	jing	20000
+正	正	zheng	20000
+但	但	dan	20000
+因	囙	yin	20000
+所	所	suo	20000
+如	如	ru	20000
+果	果	guo	20000
+还	還	huan	20000
+或	或	huo	20000
+者	者	zhe	20000
+及	及	ji	20000
+而	而	er	20000
+且	且	qie	20000
+虽	雖	sui	20000
+然	然	ran	20000
+后	后	hou	20000
+点	點	dian	20000
+非	非	fei	20000
+常	常	chang	20000
+真	真	zhen	20000
+赞	讃	zan	20000
+热	熱	re	20000
+搜	搜	sou	20000
+直	直	zhi	20000
+播	播	bo	20000
+短	短	duan	20000
+视	眎	shi	20000
+频	頻	pin	20000
+表	表	biao	20000
+情	情	qing	20000
+包	包	bao	20000
+流	流	liu	20000
+量	量	liang	20000
+种	種	zhong	20000
+草	艸	cao	20000
+打	打	da	20000
+卡	卡	ka	20000
+比	比	bi	20000
+迎	迎	ying	20000
+吗	嗎	ma	20000
+题	題	ti	20000

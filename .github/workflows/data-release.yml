@@ -1,0 +1,199 @@
+name: Data release
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CC_CEDICT_URL: "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz"
+  TATOEBA_URL: "https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2"
+  JIEBA_URL: "https://raw.githubusercontent.com/fxsjy/jieba/master/jieba/dict.txt"
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "scikit-learn==1.5.1" "coremltools==8.3.0" "wordfreq==3.1.1" "jieba==0.42.1"
+
+      - name: Download licensed upstream data
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pk-upstream
+          curl -fL --retry 6 --retry-all-errors --max-time 600 -o /tmp/pk-upstream/cedict.txt.gz "$CC_CEDICT_URL"
+          curl -fL --retry 6 --retry-all-errors --max-time 600 -o /tmp/pk-upstream/cmn_sentences.tsv.bz2 "$TATOEBA_URL"
+          curl -fL --retry 6 --retry-all-errors --max-time 600 -o /tmp/pk-upstream/jieba_dict.txt "$JIEBA_URL"
+          gzip -t /tmp/pk-upstream/cedict.txt.gz
+          bzip2 -t /tmp/pk-upstream/cmn_sentences.tsv.bz2
+          shasum -a 256 /tmp/pk-upstream/* | tee /tmp/pk-upstream/SHA256SUMS
+
+      - name: Stop if upstream data is unchanged
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CC_HASH=$(shasum -a 256 /tmp/pk-upstream/cedict.txt.gz | cut -d' ' -f1)
+          TATOEBA_HASH=$(shasum -a 256 /tmp/pk-upstream/cmn_sentences.tsv.bz2 | cut -d' ' -f1)
+          echo "cc_hash=$CC_HASH" >> "$GITHUB_OUTPUT"
+          echo "tatoeba_hash=$TATOEBA_HASH" >> "$GITHUB_OUTPUT"
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty' || true)
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p /tmp/pk-latest
+          gh release download "$LATEST_TAG" --pattern SOURCE.json --dir /tmp/pk-latest || true
+          if [[ -f /tmp/pk-latest/SOURCE.json ]]; then
+            OLD_CC=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("ccCedictGzipSha256",""))' /tmp/pk-latest/SOURCE.json)
+            OLD_TATOEBA=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("tatoebaBz2Sha256",""))' /tmp/pk-latest/SOURCE.json)
+            if [[ "$OLD_CC" == "$CC_HASH" && "$OLD_TATOEBA" == "$TATOEBA_HASH" ]]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "Upstream data unchanged; no release."
+              exit 0
+            fi
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build data and micro-model
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          ED25519_PRIVATE_KEY: ${{ secrets.ED25519_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ED25519_PRIVATE_KEY:-}" ]]; then
+            echo "::error::ED25519_PRIVATE_KEY is not configured. See docs/UPDATE.md."
+            exit 1
+          fi
+          printf '%s\n' "$ED25519_PRIVATE_KEY" > /tmp/pk-private.txt
+          ACTUAL_PUB=$(swift run -c release manifest-tool public-key /tmp/pk-private.txt)
+          REPO_PUB=$(tr -d '\n' < Resources/UpdatePublicKey.txt)
+          if [[ "$ACTUAL_PUB" != "$REPO_PUB" ]]; then
+            echo "::error::Signing key does not match Resources/UpdatePublicKey.txt. Refusing to publish an unverifiable release."
+            exit 1
+          fi
+
+          DATE=$(date -u +%Y.%m.%d)
+          SHORT=$(cut -c1-8 <<< "${{ steps.upstream.outputs.cc_hash }}")
+          VERSION="${DATE}.${SHORT}"
+          TAG="data-${VERSION}"
+          BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/"
+          CC_HASH="${{ steps.upstream.outputs.cc_hash }}"
+          TATOEBA_HASH="${{ steps.upstream.outputs.tatoeba_hash }}"
+          export VERSION TAG BASE_URL CC_HASH TATOEBA_HASH
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "BASE_URL=$BASE_URL" >> "$GITHUB_ENV"
+
+          mkdir -p /tmp/pk-source /tmp/pk-dist
+          python3 scripts/make_ngrams.py \
+            --sentences /tmp/pk-upstream/cmn_sentences.tsv.bz2 \
+            --out /tmp/pk-source/ngram.tsv \
+            --limit 20000 \
+            --manual DataSources/ngram_manual.tsv
+
+          python3 scripts/import_cc_cedict.py \
+            --cedict /tmp/pk-upstream/cedict.txt.gz \
+            --wordfreq \
+            --manual DataSources/manual_additions.tsv \
+            --ngram /tmp/pk-source/ngram.tsv \
+            --out /tmp/pk-source
+
+          swift run -c release dictionary-builder \
+            --source /tmp/pk-source \
+            --out /tmp/pk-dist \
+            --data-version "$VERSION" \
+            --source-name 'CC-CEDICT + wordfreq + Tatoeba + reviewed additions' \
+            --source-url 'https://www.mdbg.net/chinese/dictionary?page=cc-cedict' \
+            --license 'CC BY-SA 4.0 (CC-CEDICT, wordfreq); CC BY 2.0 FR (Tatoeba n-grams); MIT (jieba)' \
+            --attribution 'CC-CEDICT by MDBG; frequency data derived from wordfreq by Robyn Speer; n-gram counts derived from Tatoeba contributors; jieba by fxsjy. See THIRD_PARTY_LICENSES.md.'
+
+          python3 ModelBuilder/build_model.py \
+            --out /tmp/pk-dist/candidate_scorer.mlmodel \
+            --metadata /tmp/pk-dist/candidate_scorer.model.json
+
+          cp LICENSE THIRD_PARTY_LICENSES.md PRIVACY.md Resources/Generated/NOTICE.txt /tmp/pk-dist/
+          cp -R licenses /tmp/pk-dist/
+          cp DataSources/SOURCES.md /tmp/pk-dist/SOURCES.md
+          cp Resources/UpdatePublicKey.txt /tmp/pk-dist/UpdatePublicKey.txt
+
+          python3 - <<'PY'
+          import json, os
+          source = {
+              "version": os.environ["VERSION"],
+              "tag": os.environ["TAG"],
+              "ccCedictUrl": os.environ["CC_CEDICT_URL"],
+              "ccCedictGzipSha256": os.environ["CC_HASH"],
+              "tatoebaUrl": os.environ["TATOEBA_URL"],
+              "tatoebaBz2Sha256": os.environ["TATOEBA_HASH"],
+              "jiebaUrl": os.environ["JIEBA_URL"],
+              "modifications": "normalized pinyin; deduplicated entries; POS heuristics; wordfreq-derived frequency; Tatoeba n-gram counts; reviewed overrides; binary dictionaries; Core ML micro-model",
+              "licenses": {"cc-cedict": "CC BY-SA 4.0", "wordfreq-data": "CC BY-SA 4.0", "tatoeba": "CC BY 2.0 FR", "jieba": "MIT", "code": "Apache-2.0"},
+          }
+          open("/tmp/pk-dist/SOURCE.json", "w").write(json.dumps(source, ensure_ascii=False, indent=2) + "\n")
+          PY
+
+          swift run -c release manifest-tool make \
+            /tmp/pk-dist "$VERSION" "$BASE_URL" "1.0.0" /tmp/pk-private.txt /tmp/pk-dist/manifest.json
+
+          swift run -c release manifest-tool verify \
+            /tmp/pk-dist/manifest.json Resources/UpdatePublicKey.txt
+
+          cat > /tmp/pk-dist/RELEASE_NOTES.md <<EOF
+          # Data ${VERSION}
+
+          This release contains only project-built binary dictionaries, a Core ML micro-model, a signed manifest,
+          attribution, and license files. It does not contain raw CC-CEDICT or Tatoeba text.
+
+          - CC-CEDICT gzip SHA-256: \`${{ steps.upstream.outputs.cc_hash }}\`
+          - Tatoeba bz2 SHA-256: \`${{ steps.upstream.outputs.tatoeba_hash }}\`
+          - Data version: \`${VERSION}\`
+          - Minimum app version: \`1.0.0\`
+          - License: code Apache-2.0; data CC BY-SA 4.0 / CC BY 2.0 FR; tools MIT
+          - Manifest signature: Ed25519; verify against \`UpdatePublicKey.txt\`
+
+          The app verifies size, SHA-256, and Ed25519 before an atomic install and keeps the previous version for
+          rollback. The keyboard extension never downloads data.
+          EOF
+
+      - name: Publish release
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            /tmp/pk-dist/manifest.json \
+            /tmp/pk-dist/pinyin.bin \
+            /tmp/pk-dist/dictionary.zh-en.bin \
+            /tmp/pk-dist/dictionary.en-zh.bin \
+            /tmp/pk-dist/lm.bigram.bin \
+            /tmp/pk-dist/lm.trigram.bin \
+            /tmp/pk-dist/candidate_scorer.mlmodel \
+            /tmp/pk-dist/candidate_scorer.model.json \
+            /tmp/pk-dist/dataset.json \
+            /tmp/pk-dist/SOURCE.json \
+            /tmp/pk-dist/SOURCES.md \
+            /tmp/pk-dist/LICENSE \
+            /tmp/pk-dist/THIRD_PARTY_LICENSES.md \
+            /tmp/pk-dist/PRIVACY.md \
+            /tmp/pk-dist/NOTICE.txt \
+            /tmp/pk-dist/UpdatePublicKey.txt \
+            /tmp/pk-dist/licenses/*.txt \
+            --title "Data ${VERSION}" \
+            --notes-file /tmp/pk-dist/RELEASE_NOTES.md \
+            --latest

@@ -1,0 +1,91 @@
+name: PrivateKeyboard
+options:
+  bundleIdPrefix: com.privatekeyboard
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    CLANG_ENABLE_MODULES: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+packages:
+  PrivateKeyboardCore:
+    path: .
+targets:
+  PrivateKeyboard:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Resources/UpdatePublicKey.txt
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.privatekeyboard.app
+        PRODUCT_NAME: PrivateKeyboard
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/PrivateKeyboard.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: PrivateKeyboardCore
+      - package: PrivateKeyboardCore
+        product: PrivateKeyboardUpdater
+      - target: PrivateKeyboardKeyboard
+        embed: true
+  PrivateKeyboardKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: KeyboardExtension
+      - path: Resources/Generated
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.privatekeyboard.app.keyboard
+        PRODUCT_NAME: PrivateKeyboardKeyboard
+        INFOPLIST_FILE: KeyboardExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: KeyboardExtension/KeyboardExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: PrivateKeyboardCore
+  PrivateKeyboardTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/PrivateKeyboardCoreTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.privatekeyboard.app.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PrivateKeyboard.app/PrivateKeyboard"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - package: PrivateKeyboardCore
+      - package: PrivateKeyboardCore
+        product: PrivateKeyboardUpdater
+      - target: PrivateKeyboard
+schemes:
+  PrivateKeyboard:
+    build:
+      targets:
+        PrivateKeyboard: all
+        PrivateKeyboardKeyboard: all
+        PrivateKeyboardTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - PrivateKeyboardTests
