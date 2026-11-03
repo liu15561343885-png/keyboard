@@ -4,6 +4,7 @@ public enum KeyboardPage: Equatable {
     case letters
     case numbers
     case symbols
+    case punctuation
 }
 
 public enum KeyAction: Equatable {
@@ -52,6 +53,8 @@ public enum KeyboardLayout {
             return numberRows(language: language, returnKeyLabel: returnKeyLabel)
         case .symbols:
             return symbolRows(language: language, returnKeyLabel: returnKeyLabel)
+        case .punctuation:
+            return punctuationRows(language: language, returnKeyLabel: returnKeyLabel)
         }
     }
 
@@ -96,10 +99,30 @@ public enum KeyboardLayout {
             KeySpec(",", .character(",")),
             KeySpec("?", .character("?")),
             KeySpec("!", .character("!")),
-            KeySpec("'", .character("'")),
+            KeySpec("，。？", .page(.punctuation), style: .function, weight: 1.2),
             KeySpec("⌫", .backspace, style: .function, weight: 1.3)
         ]
         return [first, second, third, bottomRow(page: .symbols, language: language, returnKeyLabel: returnKeyLabel)]
+    }
+
+    private static func punctuationRows(language: InputLanguage, returnKeyLabel: String) -> [[KeySpec]] {
+        let first = ["，", "。", "？", "！", "、", "；", "：", "（", "）"].map { KeySpec($0, .character($0)) } + [
+            KeySpec("⌫", .backspace, style: .function, weight: 1.3)
+        ]
+        let second = ["“", "”", "‘", "’", "《", "》", "【", "】", "…", "—"].map { KeySpec($0, .character($0)) }
+        let third = [
+            KeySpec("#+=", .page(.symbols), style: .function),
+            KeySpec("～", .character("～")),
+            KeySpec("·", .character("·")),
+            KeySpec("￥", .character("￥")),
+            KeySpec("$", .character("$")),
+            KeySpec("€", .character("€")),
+            KeySpec("£", .character("£")),
+            KeySpec("%", .character("%")),
+            KeySpec("‰", .character("‰")),
+            KeySpec("@", .character("@"))
+        ]
+        return [first, second, third, bottomRow(page: .punctuation, language: language, returnKeyLabel: returnKeyLabel)]
     }
 
     private static func bottomRow(page: KeyboardPage, language: InputLanguage, returnKeyLabel: String) -> [KeySpec] {
@@ -107,7 +130,7 @@ public enum KeyboardLayout {
         switch page {
         case .letters:
             left = KeySpec("123", .page(.numbers), style: .function)
-        case .numbers, .symbols:
+        case .numbers, .symbols, .punctuation:
             left = KeySpec("ABC", .page(.letters), style: .function)
         }
         var keys: [KeySpec] = [left]

@@ -35,6 +35,15 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertTrue(upper[2].contains { $0.action == .shift && $0.label == "⬆︎" })
     }
 
+    func testPunctuationPage() {
+        let rows = KeyboardLayout.rows(page: .punctuation, language: .chinese, shifted: false)
+        XCTAssertEqual(rows.count, 4)
+        let labels = rows.flatMap { $0 }.map(\.label)
+        for punctuation in ["，", "。", "？", "！", "、", "；", "：", "（", "）", "“", "”", "《", "》", "…", "—", "￥"] {
+            XCTAssertTrue(labels.contains(punctuation), "missing punctuation \(punctuation)")
+        }
+    }
+
     func testCapsLockAndDynamicReturnLabel() {
         let rows = KeyboardLayout.rows(
             page: .letters,

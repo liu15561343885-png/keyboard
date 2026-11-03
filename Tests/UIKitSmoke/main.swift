@@ -42,6 +42,8 @@ for label in ["q", "i", "h", "a", "o", "n", "空格"] {
 }
 let barForFrames = allSubviews(keyboard).compactMap { $0 as? CandidateBarView }.first
 print("candidate bar frame:", barForFrames?.frame as Any)
+precondition(!allSubviews(keyboard).compactMap { ($0 as? UILabel)?.text }.contains("本地候选"), "legacy candidate placeholder still present")
+precondition(!allSubviews(keyboard).compactMap { ($0 as? KeyButton)?.accessibilityIdentifier }.contains("key-nextKeyboard"), "globe key still present")
 precondition(keyButton(withLabel: "q") != nil, "q key not found")
 if let q = keyButton(withLabel: "q") {
     _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: q)
@@ -93,6 +95,17 @@ for index in 1..<24 {
 }
 keyboard.update(candidates: manyCandidates)
 keyboard.layoutIfNeeded()
+let expand = allSubviews(keyboard).compactMap { $0 as? UIButton }.first { $0.accessibilityIdentifier == "candidate-expand" }
+precondition(expand != nil, "candidate expand button missing")
+barForFrames?.onToggleExpand?()
+keyboard.layoutIfNeeded()
+let panel = allSubviews(keyboard).compactMap { $0 as? CandidatePanelView }.first
+print("panel found:", panel != nil, "hidden:", panel?.isHidden as Any)
+precondition(panel?.isHidden == false, "candidate panel did not expand")
+let panelCells = allSubviews(panel!).filter { $0 is CandidatePanelCell }.count
+print("expanded panel cells:", panelCells)
+precondition(panelCells == 24, "expanded panel did not show all candidates")
+barForFrames?.onToggleExpand?()
 let candidateCells = allSubviews(keyboard).filter { String(describing: type(of: $0)) == "CandidateCell" }
 print("candidate cells:", candidateCells.count)
 precondition(candidateCells.count == 24, "expected 24 candidate cells, got \(candidateCells.count)")

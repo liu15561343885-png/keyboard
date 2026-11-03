@@ -8,7 +8,9 @@ final class KeyboardView: UIView {
 
     private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
     private let candidateBar = CandidateBarView()
+    private let candidatePanel = CandidatePanelView()
     private let rowsStack = UIStackView()
+    private var candidatesExpanded = false
     private var currentPage: KeyboardPage = .letters
     private var currentLanguage: InputLanguage = .chinese
     private var isShifted = false
@@ -31,6 +33,8 @@ final class KeyboardView: UIView {
         blurView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(blurView)
         addSubview(candidateBar)
+        addSubview(candidatePanel)
+        candidatePanel.isHidden = true
         rowsStack.axis = .vertical
         rowsStack.alignment = .fill
         rowsStack.distribution = .fillEqually
@@ -52,9 +56,22 @@ final class KeyboardView: UIView {
             rowsStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: KeyboardTheme.horizontalMargin),
             rowsStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -KeyboardTheme.horizontalMargin),
             rowsStack.topAnchor.constraint(equalTo: candidateBar.bottomAnchor, constant: 4),
-            rowsStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4)
+            rowsStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+
+            candidatePanel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            candidatePanel.trailingAnchor.constraint(equalTo: trailingAnchor),
+            candidatePanel.topAnchor.constraint(equalTo: candidateBar.bottomAnchor, constant: 4),
+            candidatePanel.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
         candidateBar.onSelect = { [weak self] candidate in
+            self?.collapseCandidates()
+            self?.onSelectCandidate?(candidate)
+        }
+        candidateBar.onToggleExpand = { [weak self] in
+            self?.toggleCandidates()
+        }
+        candidatePanel.onSelect = { [weak self] candidate in
+            self?.collapseCandidates()
             self?.onSelectCandidate?(candidate)
         }
         rebuildKeys()
@@ -67,6 +84,27 @@ final class KeyboardView: UIView {
 
     func update(candidates: [InputCandidate]) {
         candidateBar.update(candidates: candidates)
+        candidatePanel.update(candidates: candidates)
+        if candidates.isEmpty {
+            collapseCandidates()
+        }
+    }
+
+    private func toggleCandidates() {
+        guard !candidateBar.isHidden else { return }
+        candidatesExpanded.toggle()
+        candidateBar.setExpanded(candidatesExpanded)
+        candidatePanel.isHidden = !candidatesExpanded
+        rowsStack.isHidden = candidatesExpanded
+        onFeedback?()
+    }
+
+    private func collapseCandidates() {
+        guard candidatesExpanded else { return }
+        candidatesExpanded = false
+        candidateBar.setExpanded(false)
+        candidatePanel.isHidden = true
+        rowsStack.isHidden = false
     }
 
     func configure(
@@ -79,6 +117,9 @@ final class KeyboardView: UIView {
     ) {
         guard force || page != currentPage || language != currentLanguage || shifted != isShifted
                 || capsLocked != self.capsLocked || returnKeyLabel != self.returnKeyLabel else { return }
+        if page != currentPage || language != currentLanguage {
+            collapseCandidates()
+        }
         currentPage = page
         currentLanguage = language
         isShifted = shifted
