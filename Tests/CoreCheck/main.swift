@@ -152,7 +152,7 @@ print(String(format: "gold n=%.0f top1=%.1f%% top3=%.1f%% top5=%.1f%%", count, D
 // deterministic spaced sample of dictionary headwords.
 let holdoutPath = URL(fileURLWithPath: "DataSources/eval/holdout_500.tsv")
 if FileManager.default.fileExists(atPath: holdoutPath.path) {
-    var h1 = 0, h3 = 0, h5 = 0, total = 0
+    var h1 = 0, h3 = 0, h5 = 0, total = 0, shownMisses = 0
     for line in try String(contentsOf: holdoutPath, encoding: .utf8).split(separator: "\n") {
         let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
         guard fields.count == 2 else { continue }
@@ -160,6 +160,10 @@ if FileManager.default.fileExists(atPath: holdoutPath.path) {
         let expected = String(fields[1])
         let result = try engine.predict(input: input, language: .chinese, contextWords: [], limit: 8)
         total += 1
+        if result.first?.text != expected, shownMisses < 20 {
+            print("holdout miss: \(input) expected=\(expected) got=\(result.prefix(3).map(\.text).joined(separator: ","))")
+            shownMisses += 1
+        }
         if result.first?.text == expected { h1 += 1 }
         if result.prefix(3).contains(where: { $0.text == expected }) { h3 += 1 }
         if result.prefix(5).contains(where: { $0.text == expected }) { h5 += 1 }
