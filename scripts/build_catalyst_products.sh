@@ -33,7 +33,7 @@ swiftc "${TARGET[@]}" -I "$WORK" -parse-as-library App/*.swift \
   -o "$WORK/PrivateKeyboard"
 
 echo "Linking Keyboard Extension..."
-swiftc "${TARGET[@]}" -I "$WORK" -parse-as-library -emit-library \
+swiftc "${TARGET[@]}" -I "$WORK" -parse-as-library -application-extension -emit-library \
   -o "$WORK/PrivateKeyboardKeyboard.dylib" KeyboardExtension/*.swift \
   "$WORK/libPrivateKeyboardCore.a"
 

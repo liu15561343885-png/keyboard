@@ -27,5 +27,5 @@ swiftc "${COMMON[@]}" -parse-as-library -emit-module -module-name PrivateKeyboar
 echo "Typechecking Host App..."
 swiftc "${COMMON[@]}" -typecheck App/*.swift
 echo "Typechecking Keyboard Extension..."
-swiftc "${COMMON[@]}" -typecheck KeyboardExtension/*.swift
+swiftc "${COMMON[@]}" -application-extension -typecheck KeyboardExtension/*.swift
 echo "Catalyst typecheck passed (UI compile semantics only; not an iOS device build)."
