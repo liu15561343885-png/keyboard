@@ -8,7 +8,7 @@ GitHub: https://github.com/liu15561343885-png/keyboard
 
 > **当前状态：Alpha 工程预览，不是“可日常使用”的版本。**
 >
-> 本机 Xcode 16.4 / iPhone 16 Simulator：`xcodebuild build` **通过**，`xcodebuild test` **36/36 通过**。GitHub Actions（run 41601735713）同样全绿。真机仍未验证。
+> 本机 Xcode 16.4 / iPhone 16 Simulator：`xcodebuild build` **通过**，`xcodebuild test` **36/36 通过**。GitHub Actions（run 41628242781）同样全绿。真机仍未验证。
 >
 > 本项目不声称达到大厂输入法效果。核心库已在本机（macOS / Xcode 16.4）构建并通过端到端检查；`swift test` 36/36 通过；UIKit/SwiftUI 源码通过 Mac Catalyst 类型检查/链接。GitHub Actions 已在 Xcode 16.4 / iPhone 16 Simulator 上完成 iOS App + Keyboard Extension 构建、单元测试与扩展符号检查。**尚未在 iPhone 真机验证**，不能称为“可日常使用”。所有指标见 [docs/METRICS.md](docs/METRICS.md)。
 
@@ -236,11 +236,12 @@ swift run core-check Resources/Generated
 
 当前本地验证结果（2026-11-03）：
 
-- 36 个 XCTest 测试方法：**36/36 通过**（本机 Xcode 16.4 `swift test`）
+- 36 个 XCTest 单元测试：**36/36 通过**（本机 Xcode 16.4 `swift test`）
+- 1 个条件式键盘 UI 测试：**通过**（先在设置启用键盘；输入 `nihao → 你好`）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
 - 本机 Xcode 16.4：iOS Simulator `build` 通过，`test` 36/36 通过；
 - 模拟器自定义键盘：截图 [custom-keyboard.png](docs/screenshots/custom-keyboard.png)，坐标输入的 `nihao → 你好` UI 测试日志 [simulator-keyboard-ui-test.log](docs/evidence/simulator-keyboard-ui-test.log)；
-- GitHub Actions：iOS Simulator build、Xcode unit tests、Extension 符号检查通过（run 41601735713）；
+- GitHub Actions：iOS Simulator build、Xcode unit tests、Extension 符号检查通过（run 41628242781）；
 - 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏横向滚动、深色模式颜色解析、按键/候选回调、KeyboardViewController 实例化与 288 pt 高度）
 - 98 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
 - 候选平均延迟 **约 6 ms**（p95 约 15 ms）；引擎初始化约 7 ms（macOS Release；真机待测）
