@@ -41,6 +41,7 @@
 | 键盘扩展网络 API | 源码级检查通过 | `scripts/check_privacy.sh` |
 | Apple 隐私清单 | 通过 | `PrivacyInfo.xcprivacy` 同时进入 App 与扩展；无追踪、无采集声明 |
 | 本地数据备份排除 | 通过 | 用户词频文件与数据集根目录设置 `isExcludedFromBackup` |
+| 数据/配置一致性 | 通过 | `scripts/check_artifacts.py`：哈希、版本、App Group、公钥、manifest 示例 |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、候选 3 个、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
 | XCTest 测试方法执行 | 29/29 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |

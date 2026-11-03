@@ -41,6 +41,8 @@
 swift build
 swift run core-check Resources/Generated
 ./scripts/check_privacy.sh
+python3 scripts/check_artifacts.py
+swift run manifest-tool verify docs/manifest.example.json Resources/UpdatePublicKey.txt
 ./scripts/typecheck_catalyst.sh
 ./scripts/smoke_keyboard_catalyst.sh
 ```

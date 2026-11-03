@@ -25,6 +25,11 @@ jobs:
       - name: Privacy audit
         run: ./scripts/check_privacy.sh
 
+      - name: Artifact and configuration integrity
+        run: |
+          python3 scripts/check_artifacts.py
+          swift run -c release manifest-tool verify docs/manifest.example.json Resources/UpdatePublicKey.txt
+
       - name: Core end-to-end checks
         run: swift run -c release core-check Resources/Generated
 
