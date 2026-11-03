@@ -252,16 +252,16 @@ final class KeyboardView: UIView {
 
     private func buildNineKeyGrid() {
         let grid = UIView()
-        grid.translatesAutoresizingMaskIntoConstraints = false
+        grid.translatesAutoresizingMaskIntoConstraints = true
         insertSubview(grid, belowSubview: candidatePanel)
         nineGrid = grid
         nineCells.removeAll()
-        NSLayoutConstraint.activate([
-            grid.leadingAnchor.constraint(equalTo: leadingAnchor, constant: KeyboardTheme.horizontalMargin),
-            grid.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -KeyboardTheme.horizontalMargin),
-            grid.topAnchor.constraint(equalTo: candidateBar.bottomAnchor),
-            grid.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -56)
-        ])
+        grid.frame = CGRect(
+            x: KeyboardTheme.horizontalMargin,
+            y: KeyboardTheme.candidateBarHeight,
+            width: max(0, bounds.width - KeyboardTheme.horizontalMargin * 2),
+            height: max(0, bounds.height - KeyboardTheme.candidateBarHeight - 56)
+        )
 
         for cell in KeyboardLayout.nineKeyGrid(returnKeyLabel: returnKeyLabel) {
             let button = KeyButton(spec: cell.spec)
@@ -282,6 +282,7 @@ final class KeyboardView: UIView {
             grid.addSubview(button)
             nineCells.append((button, cell))
         }
+        layoutNineKeyGrid()
     }
 
     private func layoutNineKeyGrid() {

@@ -15,10 +15,14 @@ print("letter page keys:", letterKeys)
 precondition(letterKeys == 32, "expected 32 key controls, got \(letterKeys)")
 
 keyboard.configure(page: .letters, language: .chinese, shifted: false, nineKey: true, force: true)
+keyboard.frame = CGRect(x: 0, y: 0, width: 393, height: 288)
+keyboard.setNeedsLayout()
 keyboard.layoutIfNeeded()
-let nineKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
-print("nine-key grid keys:", nineKeys)
-precondition(nineKeys == 18, "expected 18 nine-key controls, got \(nineKeys)")
+let nineKeyButtons = allSubviews(keyboard).compactMap { $0 as? KeyButton }
+print("nine-key grid keys:", nineKeyButtons.count)
+precondition(nineKeyButtons.count == 18, "expected 18 nine-key controls, got \(nineKeyButtons.count)")
+precondition(nineKeyButtons.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 }, "nine-key controls have zero frames")
+precondition(nineKeyButtons.allSatisfy { $0.frame.maxX <= keyboard.bounds.maxX + 0.5 && $0.frame.maxY <= keyboard.bounds.maxY + 0.5 }, "nine-key controls exceed keyboard bounds")
 
 keyboard.configure(page: .numbers, language: .chinese, shifted: false, force: true)
 keyboard.layoutIfNeeded()
