@@ -16,7 +16,8 @@ final class KeyButton: UIControl {
         self.weight = max(0.1, spec.weight)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        layer.cornerRadius = 5
+        layer.cornerRadius = 9
+        layer.cornerCurve = .continuous
         layer.masksToBounds = false
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.18
@@ -114,6 +115,8 @@ final class KeyButton: UIControl {
 
     private func applyStyle() {
         backgroundColor = normalBackground
+        layer.borderWidth = 0.5
+        layer.borderColor = KeyboardTheme.separator.cgColor
         icon.tintColor = KeyboardTheme.keyText
         switch style {
         case .letter:

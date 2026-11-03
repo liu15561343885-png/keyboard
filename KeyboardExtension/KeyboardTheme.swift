@@ -3,26 +3,22 @@ import UIKit
 enum KeyboardTheme {
     static let background = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
-            : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 1)
+            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 0.55)
+            : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 0.55)
     }
 
-    static let candidateBackground = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
-            : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 1)
-    }
+    static let candidateBackground = UIColor { _ in .clear }
 
     static let key = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.30, green: 0.30, blue: 0.32, alpha: 1)
-            : UIColor.white
+            ? UIColor(red: 0.30, green: 0.30, blue: 0.32, alpha: 0.82)
+            : UIColor.white.withAlphaComponent(0.88)
     }
 
     static let functionKey = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.23, green: 0.23, blue: 0.25, alpha: 1)
-            : UIColor(red: 0.68, green: 0.70, blue: 0.73, alpha: 1)
+            ? UIColor(red: 0.23, green: 0.23, blue: 0.25, alpha: 0.78)
+            : UIColor(red: 0.68, green: 0.70, blue: 0.73, alpha: 0.62)
     }
 
     static let pressedKey = UIColor { trait in

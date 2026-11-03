@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -110,16 +110,16 @@
 		3DE5F7AC7895AADB190ECE19 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		42B7FA6D5F8C4CD40760DCF9 /* PrivateKeyboardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateKeyboardApp.swift; sourceTree = "<group>"; };
 		4443F5068CF28B84F5A4A2DA /* PrivateKeyboard */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PrivateKeyboard; path = .; sourceTree = SOURCE_ROOT; };
-		452A326E5E95B921C50C2FB9 /* LICENSE */ = {isa = PBXFileReference; path = LICENSE; sourceTree = "<group>"; };
+		452A326E5E95B921C50C2FB9 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		46D6B3D27148B4C69D089D37 /* CC-BY-SA-4.0.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "CC-BY-SA-4.0.txt"; sourceTree = "<group>"; };
-		4F41F6E0610FF0570D7A007A /* PrivateKeyboard.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PrivateKeyboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F41F6E0610FF0570D7A007A /* PrivateKeyboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivateKeyboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		58526BBFDBD290A8B3A0474D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5DB347311ABBC4DF2B4B22FA /* candidate_scorer.model.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = candidate_scorer.model.json; sourceTree = "<group>"; };
 		5E4348BB0531BB5225B6CBC8 /* WORDFREQ.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = WORDFREQ.txt; sourceTree = "<group>"; };
 		61688CB04A63FA4A50E640AC /* dataset.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = dataset.json; sourceTree = "<group>"; };
 		648457D73C85914BB7FA00EE /* PRIVACY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PRIVACY.md; sourceTree = "<group>"; };
 		664B2040E132EA5456D038EB /* KeyboardExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyboardExtension.entitlements; sourceTree = "<group>"; };
-		672DAD9370EB20F70B3D4EAF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		672DAD9370EB20F70B3D4EAF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6778A807CCAA4F3B21F79979 /* PrivateKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivateKeyboard.entitlements; sourceTree = "<group>"; };
 		7369939393CEEBC74131B8D2 /* dictionary.en-zh.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = "dictionary.en-zh.bin"; sourceTree = "<group>"; };
 		7863B0BA9938A9802772B82C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -143,7 +143,7 @@
 		E2ECEF896DEA31B163A5823E /* UserLexiconTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLexiconTests.swift; sourceTree = "<group>"; };
 		F2285AF1F649A358F87D5FEB /* pinyin.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = pinyin.bin; sourceTree = "<group>"; };
 		F2BA550FFC2D8EE63A0FDCED /* PinyinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinyinTests.swift; sourceTree = "<group>"; };
-		FBBCE8E0788371D485EC36DB /* PrivateKeyboardKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrivateKeyboardKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FBBCE8E0788371D485EC36DB /* PrivateKeyboardKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrivateKeyboardKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -411,14 +411,14 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
-					E98195D861178AFAFBE0FA9F = {
+					E27D5CBC845F041C1F3FEF9F = {
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
 							};
 						};
 					};
-					E27D5CBC845F041C1F3FEF9F = {
+					E98195D861178AFAFBE0FA9F = {
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
@@ -443,7 +443,6 @@
 			packageReferences = (
 				47980C01DD9D8FD7B6F0F917 /* XCLocalSwiftPackageReference "." */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = BF72F0A9B055A3C1A387FA81 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -605,6 +604,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/KeyboardExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 57GBM8R57Z;
 				INFOPLIST_FILE = KeyboardExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -686,6 +686,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 57GBM8R57Z;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -707,6 +708,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardExtension/KeyboardExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 57GBM8R57Z;
 				INFOPLIST_FILE = KeyboardExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -827,6 +829,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 57GBM8R57Z;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

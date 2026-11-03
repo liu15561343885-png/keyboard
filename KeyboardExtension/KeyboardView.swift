@@ -4,20 +4,32 @@ import UIKit
 final class KeyboardView: UIView {
     var onAction: ((KeyAction) -> Void)?
     var onFeedback: (() -> Void)?
+    var onCursorMove: ((Int) -> Void)?
 
+    private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
     private let candidateBar = CandidateBarView()
     private let rowsStack = UIStackView()
     private var currentPage: KeyboardPage = .letters
     private var currentLanguage: InputLanguage = .chinese
     private var isShifted = false
+    private var capsLocked = false
+    private var returnKeyLabel = "换行"
     private var deleteTimer: Timer?
     private var lastLongPressDeleteEnd: TimeInterval = 0
+    private var lastCursorMoveEnd: TimeInterval = 0
+    private var cursorAnchorX: CGFloat = 0
+    private var cursorRemainder: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = KeyboardTheme.background
+        backgroundColor = .clear
         translatesAutoresizingMaskIntoConstraints = false
+        layer.cornerRadius = 16
+        layer.cornerCurve = .continuous
+        layer.masksToBounds = true
 
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(blurView)
         addSubview(candidateBar)
         rowsStack.axis = .vertical
         rowsStack.alignment = .fill
@@ -27,6 +39,11 @@ final class KeyboardView: UIView {
         addSubview(rowsStack)
 
         NSLayoutConstraint.activate([
+            blurView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            blurView.topAnchor.constraint(equalTo: topAnchor),
+            blurView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
             candidateBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             candidateBar.trailingAnchor.constraint(equalTo: trailingAnchor),
             candidateBar.topAnchor.constraint(equalTo: topAnchor),
@@ -52,11 +69,21 @@ final class KeyboardView: UIView {
         candidateBar.update(candidates: candidates)
     }
 
-    func configure(page: KeyboardPage, language: InputLanguage, shifted: Bool, force: Bool = false) {
-        guard force || page != currentPage || language != currentLanguage || shifted != isShifted else { return }
+    func configure(
+        page: KeyboardPage,
+        language: InputLanguage,
+        shifted: Bool,
+        capsLocked: Bool = false,
+        returnKeyLabel: String = "换行",
+        force: Bool = false
+    ) {
+        guard force || page != currentPage || language != currentLanguage || shifted != isShifted
+                || capsLocked != self.capsLocked || returnKeyLabel != self.returnKeyLabel else { return }
         currentPage = page
         currentLanguage = language
         isShifted = shifted
+        self.capsLocked = capsLocked
+        self.returnKeyLabel = returnKeyLabel
         rebuildKeys()
     }
 
@@ -71,7 +98,13 @@ final class KeyboardView: UIView {
             rowsStack.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
-        let rows = KeyboardLayout.rows(page: currentPage, language: currentLanguage, shifted: isShifted)
+        let rows = KeyboardLayout.rows(
+            page: currentPage,
+            language: currentLanguage,
+            shifted: isShifted,
+            capsLocked: capsLocked,
+            returnKeyLabel: returnKeyLabel
+        )
         for specs in rows {
             let row = UIStackView()
             row.axis = .horizontal
@@ -88,6 +121,10 @@ final class KeyboardView: UIView {
                     let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
                     longPress.minimumPressDuration = 0.45
                     button.addGestureRecognizer(longPress)
+                } else if spec.action == .space {
+                    let longPress = UILongPressGestureRecognizer(target: self, action: #selector(spaceLongPressed(_:)))
+                    longPress.minimumPressDuration = 0.3
+                    button.addGestureRecognizer(longPress)
                 }
                 row.addArrangedSubview(button)
             }
@@ -100,7 +137,34 @@ final class KeyboardView: UIView {
            Date().timeIntervalSinceReferenceDate - lastLongPressDeleteEnd < 0.15 {
             return
         }
+        if sender.action == .space,
+           Date().timeIntervalSinceReferenceDate - lastCursorMoveEnd < 0.2 {
+            return
+        }
         onAction?(sender.action)
+    }
+
+    @objc private func spaceLongPressed(_ recognizer: UILongPressGestureRecognizer) {
+        switch recognizer.state {
+        case .began:
+            cursorAnchorX = recognizer.location(in: self).x
+            cursorRemainder = 0
+            onFeedback?()
+        case .changed:
+            let x = recognizer.location(in: self).x
+            let delta = x - cursorAnchorX
+            cursorRemainder += delta
+            let steps = Int(cursorRemainder / 9)
+            if steps != 0 {
+                cursorRemainder -= CGFloat(steps * 9)
+                onCursorMove?(steps)
+            }
+            cursorAnchorX = x
+        case .ended, .cancelled, .failed:
+            lastCursorMoveEnd = Date().timeIntervalSinceReferenceDate
+        default:
+            break
+        }
     }
 
     @objc private func deleteLongPressed(_ recognizer: UILongPressGestureRecognizer) {

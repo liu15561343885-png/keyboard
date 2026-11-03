@@ -11,13 +11,13 @@ keyboard.frame = CGRect(x: 0, y: 0, width: 393, height: 288)
 keyboard.layoutIfNeeded()
 let letterKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("letter page keys:", letterKeys)
-precondition(letterKeys == 33, "expected 33 key controls, got \(letterKeys)")
+precondition(letterKeys == 32, "expected 32 key controls, got \(letterKeys)")
 
 keyboard.configure(page: .numbers, language: .chinese, shifted: false, force: true)
 keyboard.layoutIfNeeded()
 let numberKeys = allSubviews(keyboard).filter { $0 is KeyButton }.count
 print("number page keys:", numberKeys)
-precondition(numberKeys == 31, "expected 31 key controls, got \(numberKeys)")
+precondition(numberKeys == 30, "expected 30 key controls, got \(numberKeys)")
 
 keyboard.configure(page: .letters, language: .chinese, shifted: false, force: true)
 keyboard.layoutIfNeeded()
@@ -47,6 +47,9 @@ if let q = keyButton(withLabel: "q") {
     _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: q)
 }
 precondition(observedActions == [.character("q")], "q tap did not emit character action")
+let spaceKey = keyButton(withLabel: "空格")
+precondition(spaceKey?.gestureRecognizers?.contains { $0 is UILongPressGestureRecognizer } == true, "space cursor gesture missing")
+print("space cursor gesture: present")
 let deleteKey = keyButton(withLabel: "⌫")
 precondition(deleteKey != nil, "delete key not found")
 precondition(deleteKey?.gestureRecognizers?.contains { $0 is UILongPressGestureRecognizer } == true, "delete long-press recognizer missing")
@@ -130,7 +133,7 @@ controller.view.layoutIfNeeded()
 let controllerKeys = allSubviews(controller.view).filter { $0 is KeyButton }.count
 print("controller height:", controller.view.bounds.height, "controller keys:", controllerKeys)
 precondition(abs(controller.view.bounds.height - 288) < 0.5, "unexpected controller height")
-precondition(controllerKeys == 33, "unexpected controller key count")
+precondition(controllerKeys == 32, "unexpected controller key count")
 final class RecordingTextSink: KeyboardTextSink {
     var text = ""
     func insertText(_ value: String) { text += value }

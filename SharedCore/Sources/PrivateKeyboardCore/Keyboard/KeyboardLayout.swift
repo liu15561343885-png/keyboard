@@ -38,18 +38,24 @@ public struct KeySpec: Equatable {
 }
 
 public enum KeyboardLayout {
-    public static func rows(page: KeyboardPage, language: InputLanguage, shifted: Bool) -> [[KeySpec]] {
+    public static func rows(
+        page: KeyboardPage,
+        language: InputLanguage,
+        shifted: Bool,
+        capsLocked: Bool = false,
+        returnKeyLabel: String = "换行"
+    ) -> [[KeySpec]] {
         switch page {
         case .letters:
-            return letterRows(language: language, shifted: shifted)
+            return letterRows(language: language, shifted: shifted, capsLocked: capsLocked, returnKeyLabel: returnKeyLabel)
         case .numbers:
-            return numberRows(language: language)
+            return numberRows(language: language, returnKeyLabel: returnKeyLabel)
         case .symbols:
-            return symbolRows(language: language)
+            return symbolRows(language: language, returnKeyLabel: returnKeyLabel)
         }
     }
 
-    private static func letterRows(language: InputLanguage, shifted: Bool) -> [[KeySpec]] {
+    private static func letterRows(language: InputLanguage, shifted: Bool, capsLocked: Bool, returnKeyLabel: String) -> [[KeySpec]] {
         func key(_ character: Character) -> KeySpec {
             let text = shifted ? String(character).uppercased() : String(character)
             return KeySpec(text, .character(text))
@@ -57,15 +63,16 @@ public enum KeyboardLayout {
         let first = Array("qwertyuiop").map(key)
         let second = Array("asdfghjkl").map(key)
         let third = Array("zxcvbnm").map(key)
+        let shiftLabel = capsLocked ? "⇪" : (shifted ? "⬆︎" : "⇧")
         let row3: [KeySpec] = [
-            KeySpec(shifted ? "⬆︎" : "⇧", .shift, style: .function, weight: 1.35)
+            KeySpec(shiftLabel, .shift, style: .function, weight: 1.35)
         ] + third + [
             KeySpec("⌫", .backspace, style: .function, weight: 1.35)
         ]
-        return [first, second, row3, bottomRow(page: .letters, language: language)]
+        return [first, second, row3, bottomRow(page: .letters, language: language, returnKeyLabel: returnKeyLabel)]
     }
 
-    private static func numberRows(language: InputLanguage) -> [[KeySpec]] {
+    private static func numberRows(language: InputLanguage, returnKeyLabel: String) -> [[KeySpec]] {
         let digits = Array("1234567890").map { KeySpec(String($0), .character(String($0))) }
         let symbols = Array("-/:;()¥@\"").map { KeySpec(String($0), .character(String($0))) }
         let third: [KeySpec] = [
@@ -77,10 +84,10 @@ public enum KeyboardLayout {
             KeySpec("'", .character("'")),
             KeySpec("⌫", .backspace, style: .function, weight: 1.3)
         ]
-        return [digits, symbols, third, bottomRow(page: .numbers, language: language)]
+        return [digits, symbols, third, bottomRow(page: .numbers, language: language, returnKeyLabel: returnKeyLabel)]
     }
 
-    private static func symbolRows(language: InputLanguage) -> [[KeySpec]] {
+    private static func symbolRows(language: InputLanguage, returnKeyLabel: String) -> [[KeySpec]] {
         let first = Array("[]{}#%^*+=").map { KeySpec(String($0), .character(String($0))) }
         let second = Array("_\\|~<>€£·•").map { KeySpec(String($0), .character(String($0))) }
         let third: [KeySpec] = [
@@ -92,10 +99,10 @@ public enum KeyboardLayout {
             KeySpec("'", .character("'")),
             KeySpec("⌫", .backspace, style: .function, weight: 1.3)
         ]
-        return [first, second, third, bottomRow(page: .symbols, language: language)]
+        return [first, second, third, bottomRow(page: .symbols, language: language, returnKeyLabel: returnKeyLabel)]
     }
 
-    private static func bottomRow(page: KeyboardPage, language: InputLanguage) -> [KeySpec] {
+    private static func bottomRow(page: KeyboardPage, language: InputLanguage, returnKeyLabel: String) -> [KeySpec] {
         let left: KeySpec
         switch page {
         case .letters:
@@ -103,13 +110,10 @@ public enum KeyboardLayout {
         case .numbers, .symbols:
             left = KeySpec("ABC", .page(.letters), style: .function)
         }
-        var keys: [KeySpec] = [
-            left,
-            KeySpec("", .nextKeyboard, style: .function, weight: 1.0)
-        ]
+        var keys: [KeySpec] = [left]
         keys.append(KeySpec(language == .chinese ? "中" : "EN", .toggleLanguage, style: .function, weight: 1.05))
         keys.append(KeySpec("空格", .space, style: .letter, weight: 4.4))
-        keys.append(KeySpec("换行", .returnKey, style: .accent, weight: 1.8))
+        keys.append(KeySpec(returnKeyLabel, .returnKey, style: .accent, weight: 1.8))
         return keys
     }
 }

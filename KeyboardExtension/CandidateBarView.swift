@@ -5,12 +5,11 @@ final class CandidateBarView: UIView {
     var onSelect: ((InputCandidate) -> Void)?
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
-    private let emptyLabel = UILabel()
     private let separator = UIView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = KeyboardTheme.candidateBackground
+        backgroundColor = .clear
         translatesAutoresizingMaskIntoConstraints = false
 
         separator.backgroundColor = KeyboardTheme.separator
@@ -29,12 +28,6 @@ final class CandidateBarView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
-        emptyLabel.text = "本地候选"
-        emptyLabel.font = UIFont.systemFont(ofSize: 13, weight: .regular)
-        emptyLabel.textColor = KeyboardTheme.secondaryText
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(emptyLabel)
-
         NSLayoutConstraint.activate([
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -52,8 +45,6 @@ final class CandidateBarView: UIView {
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
 
-            emptyLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            emptyLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -65,14 +56,13 @@ final class CandidateBarView: UIView {
             stack.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
-        emptyLabel.isHidden = !candidates.isEmpty
         for candidate in candidates {
             let cell = CandidateCell(candidate: candidate)
             cell.addTarget(self, action: #selector(cellTapped(_:)), for: .touchUpInside)
             stack.addArrangedSubview(cell)
         }
         scrollView.setContentOffset(.zero, animated: false)
-        accessibilityLabel = candidates.isEmpty ? "本地候选栏，无候选" : "候选栏，\(candidates.count) 个候选"
+        accessibilityLabel = candidates.isEmpty ? "候选栏" : "候选栏，\(candidates.count) 个候选"
     }
 
     @objc private func cellTapped(_ sender: UIControl) {

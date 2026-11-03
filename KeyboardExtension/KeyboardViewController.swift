@@ -53,6 +53,10 @@ final class KeyboardViewController: UIInputViewController {
     private var language: InputLanguage = .chinese
     private var page: KeyboardPage = .letters
     private var isShifted = false
+    private var shiftLocked = false
+    private var lastShiftTap: TimeInterval = 0
+    private var returnKeyLabel = "换行"
+    private var compositionMonitor: Timer?
 
     override func loadView() {
         let root = KeyboardInputView(frame: .zero, inputViewStyle: .keyboard)
@@ -70,6 +74,9 @@ final class KeyboardViewController: UIInputViewController {
         keyboardView.onFeedback = { [weak self] in
             self?.feedback()
         }
+        keyboardView.onCursorMove = { [weak self] offset in
+            self?.textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+        }
         view.addSubview(keyboardView)
         NSLayoutConstraint.activate([
             keyboardView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -83,13 +90,18 @@ final class KeyboardViewController: UIInputViewController {
         preferredContentSize = CGSize(width: 0, height: KeyboardTheme.keyboardHeight)
     }
 
+    deinit {
+        compositionMonitor?.invalidate()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         haptic.prepare()
         settings = settingsStore.load()
         language = settings.lastLanguage
         isShifted = language == .english
-        keyboardView.configure(page: page, language: language, shifted: isShifted, force: true)
+        updateReturnKeyLabel()
+        refreshKeyboard(force: true)
         loadEngineIfNeeded()
     }
 
@@ -100,8 +112,11 @@ final class KeyboardViewController: UIInputViewController {
         userLexicon.reload()
         if settings.lastLanguage != language {
             language = settings.lastLanguage
-            keyboardView.configure(page: page, language: language, shifted: isShifted, force: true)
+            shiftLocked = false
+            isShifted = language == .english
         }
+        updateReturnKeyLabel()
+        refreshKeyboard(force: true)
         if let resolved = DatasetResolver.resolve(containerURL: AppGroup.containerURL()),
            resolved.version != activeDatasetVersion {
             loadEngineIfNeeded(force: true)
@@ -159,14 +174,25 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func handle(_ action: KeyAction) {
+        updateReturnKeyLabel()
+        reconcileCompositionWithDocument()
         switch action {
         case .character(let value):
             handleCharacter(value)
         case .backspace:
             handleBackspace()
         case .shift:
-            isShifted.toggle()
-            keyboardView.configure(page: page, language: language, shifted: isShifted)
+            guard language == .english else { return }
+            let now = Date().timeIntervalSinceReferenceDate
+            if now - lastShiftTap < 0.35 {
+                shiftLocked.toggle()
+                isShifted = shiftLocked
+            } else {
+                isShifted.toggle()
+                if !isShifted { shiftLocked = false }
+            }
+            lastShiftTap = now
+            refreshKeyboard()
         case .space:
             handleSpace()
         case .returnKey:
@@ -177,7 +203,7 @@ final class KeyboardViewController: UIInputViewController {
             toggleLanguage()
         case .page(let nextPage):
             page = nextPage
-            keyboardView.configure(page: page, language: language, shifted: isShifted)
+            refreshKeyboard(force: true)
         }
     }
 
@@ -193,6 +219,7 @@ final class KeyboardViewController: UIInputViewController {
                 let lower = rawValue.lowercased()
                 pinyinBuffer.append(lower)
                 textSink.insertText(lower)
+                startCompositionMonitor()
                 refreshCandidates()
                 return
             } else {
@@ -200,8 +227,9 @@ final class KeyboardViewController: UIInputViewController {
                 let value = isShifted ? rawValue.uppercased() : rawValue.lowercased()
                 englishBuffer.append(Character(value))
                 textSink.insertText(value)
-                isShifted = false
-                keyboardView.configure(page: page, language: language, shifted: isShifted)
+                isShifted = shiftLocked
+                refreshKeyboard()
+                startCompositionMonitor()
                 refreshCandidates()
                 return
             }
@@ -225,6 +253,9 @@ final class KeyboardViewController: UIInputViewController {
         } else {
             textSink.deleteBackward()
         }
+        if pinyinBuffer.isEmpty && englishBuffer.isEmpty {
+            stopCompositionMonitor()
+        }
         refreshCandidates()
     }
 
@@ -244,12 +275,14 @@ final class KeyboardViewController: UIInputViewController {
         }
         autoShiftIfNeeded()
         refreshCandidates()
-        keyboardView.configure(page: page, language: language, shifted: isShifted)
+        refreshKeyboard()
     }
 
     private func handleReturn() {
         if language == .chinese, !pinyinBuffer.isEmpty {
-            _ = commitFirstCandidateIfAny()
+            let raw = pinyinBuffer
+            deletePinyinBuffer()
+            textSink.insertText(raw)
         }
         englishBuffer = ""
         textSink.insertText("\n")
@@ -266,10 +299,11 @@ final class KeyboardViewController: UIInputViewController {
         englishBuffer = ""
         language = language == .chinese ? .english : .chinese
         page = .letters
+        shiftLocked = false
         isShifted = language == .english
         settings.lastLanguage = language
         settingsStore.save(settings)
-        keyboardView.configure(page: page, language: language, shifted: isShifted, force: true)
+        refreshKeyboard(force: true)
         refreshCandidates()
     }
 
@@ -291,11 +325,11 @@ final class KeyboardViewController: UIInputViewController {
     private func autoShiftIfNeeded() {
         guard language == .english else {
             isShifted = false
-            keyboardView.configure(page: page, language: language, shifted: isShifted)
+            refreshKeyboard()
             return
         }
         isShifted = true
-        keyboardView.configure(page: page, language: language, shifted: isShifted)
+        refreshKeyboard()
     }
 
     private func deletePinyinBuffer() {
@@ -303,6 +337,7 @@ final class KeyboardViewController: UIInputViewController {
         guard count > 0 else { return }
         for _ in 0..<count { textSink.deleteBackward() }
         pinyinBuffer = ""
+        stopCompositionMonitor()
     }
 
     @discardableResult
@@ -337,10 +372,10 @@ final class KeyboardViewController: UIInputViewController {
                 }
             }
         }
-        isShifted = language == .english ? true : false
+        isShifted = language == .english
         candidates = []
         keyboardView.update(candidates: [])
-        keyboardView.configure(page: page, language: language, shifted: isShifted)
+        refreshKeyboard()
         refreshCandidates()
     }
 
@@ -373,6 +408,70 @@ final class KeyboardViewController: UIInputViewController {
                 self.keyboardView.update(candidates: result)
             }
         }
+    }
+
+    private func refreshKeyboard(force: Bool = false) {
+        keyboardView.configure(
+            page: page,
+            language: language,
+            shifted: isShifted,
+            capsLocked: shiftLocked,
+            returnKeyLabel: returnKeyLabel,
+            force: force
+        )
+    }
+
+    private func updateReturnKeyLabel() {
+        let type = textDocumentProxy.returnKeyType
+        let label: String
+        switch type {
+        case .go: label = "前往"
+        case .google, .search, .yahoo: label = "搜索"
+        case .join: label = "加入"
+        case .next: label = "下一项"
+        case .route: label = "路线"
+        case .send: label = "发送"
+        case .done: label = "完成"
+        case .emergencyCall: label = "紧急呼叫"
+        case .continue: label = "继续"
+        default: label = "换行"
+        }
+        if label != returnKeyLabel {
+            returnKeyLabel = label
+            refreshKeyboard()
+        }
+    }
+
+    private func reconcileCompositionWithDocument() {
+        guard textSinkOverride == nil else { return }
+        let context = textDocumentProxy.documentContextBeforeInput ?? ""
+        if language == .chinese, !pinyinBuffer.isEmpty, !context.hasSuffix(pinyinBuffer) {
+            pinyinBuffer = ""
+            predictionGeneration += 1
+            candidates = []
+            keyboardView.update(candidates: [])
+            stopCompositionMonitor()
+        } else if language == .english, !englishBuffer.isEmpty, !context.hasSuffix(englishBuffer) {
+            englishBuffer = ""
+            predictionGeneration += 1
+            candidates = []
+            keyboardView.update(candidates: [])
+            stopCompositionMonitor()
+        }
+    }
+
+    private func startCompositionMonitor() {
+        guard textSinkOverride == nil, compositionMonitor == nil else { return }
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            self?.reconcileCompositionWithDocument()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        compositionMonitor = timer
+    }
+
+    private func stopCompositionMonitor() {
+        compositionMonitor?.invalidate()
+        compositionMonitor = nil
     }
 
     private func feedback() {

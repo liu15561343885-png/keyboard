@@ -21,7 +21,6 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertTrue(rows[2].contains { $0.action == .shift })
         XCTAssertTrue(rows[2].contains { $0.action == .backspace })
         let bottom = rows[3]
-        XCTAssertTrue(bottom.contains { $0.action == .nextKeyboard })
         XCTAssertTrue(bottom.contains { $0.action == .space })
         XCTAssertTrue(bottom.contains { $0.action == .returnKey })
         XCTAssertTrue(bottom.contains { $0.action == .toggleLanguage })
@@ -34,6 +33,18 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertEqual(lower[0].first?.label, "q")
         XCTAssertEqual(upper[0].first?.label, "Q")
         XCTAssertTrue(upper[2].contains { $0.action == .shift && $0.label == "⬆︎" })
+    }
+
+    func testCapsLockAndDynamicReturnLabel() {
+        let rows = KeyboardLayout.rows(
+            page: .letters,
+            language: .english,
+            shifted: true,
+            capsLocked: true,
+            returnKeyLabel: "搜索"
+        )
+        XCTAssertTrue(rows.flatMap { $0 }.contains { $0.action == .shift && $0.label == "⇪" })
+        XCTAssertTrue(rows.last?.contains { $0.action == .returnKey && $0.label == "搜索" } == true)
     }
 
     func testNumbersAndSymbols() {
