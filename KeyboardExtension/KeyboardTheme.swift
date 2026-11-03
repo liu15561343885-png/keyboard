@@ -19,7 +19,7 @@ enum KeyboardTheme {
     static var cornerRadius: CGFloat = 8
     static var backgroundCornerRadius: CGFloat = 0
     static var backgroundOpacity: CGFloat = 0.75
-    static var keyboardHeight: CGFloat = 288
+    static var keyboardHeight: CGFloat = 344
     static var horizontalMargin: CGFloat = 0
     static var keySpacing: CGFloat = 0
 

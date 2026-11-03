@@ -134,7 +134,7 @@ final class CandidateCell: UIControl {
         accessibilityIdentifier = "candidate-\(candidate.text)"
 
         firstLine.text = candidate.text
-        firstLine.font = KeyboardTheme.candidateFont
+        firstLine.font = UIFont.systemFont(ofSize: 18, weight: .regular)
         firstLine.textColor = KeyboardTheme.keyText
         firstLine.lineBreakMode = .byTruncatingTail
         firstLine.translatesAutoresizingMaskIntoConstraints = false
@@ -144,20 +144,17 @@ final class CandidateCell: UIControl {
         secondLine.textColor = KeyboardTheme.secondaryText
         secondLine.lineBreakMode = .byTruncatingTail
         secondLine.translatesAutoresizingMaskIntoConstraints = false
+        secondLine.isHidden = true
 
         addSubview(firstLine)
         addSubview(secondLine)
 
-        let width = min(140, max(54, max(firstLine.intrinsicContentSize.width, secondLine.intrinsicContentSize.width) + 16))
+        let width = min(140, max(54, firstLine.intrinsicContentSize.width + 18))
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalToConstant: width),
-            firstLine.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            firstLine.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            firstLine.topAnchor.constraint(equalTo: topAnchor, constant: 7),
-            secondLine.leadingAnchor.constraint(equalTo: firstLine.leadingAnchor),
-            secondLine.trailingAnchor.constraint(equalTo: firstLine.trailingAnchor),
-            secondLine.topAnchor.constraint(equalTo: firstLine.bottomAnchor, constant: 0),
-            secondLine.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -5)
+            firstLine.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
+            firstLine.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -9),
+            firstLine.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -254,7 +251,7 @@ final class CandidatePanelCell: UIControl {
         accessibilityLabel = candidate.detail.isEmpty ? candidate.text : "\(candidate.text)，\(candidate.detail)"
 
         firstLine.text = candidate.text
-        firstLine.font = KeyboardTheme.candidateFont
+        firstLine.font = UIFont.systemFont(ofSize: 18, weight: .regular)
         firstLine.textColor = KeyboardTheme.keyText
         firstLine.lineBreakMode = .byTruncatingTail
         firstLine.translatesAutoresizingMaskIntoConstraints = false
@@ -264,6 +261,7 @@ final class CandidatePanelCell: UIControl {
         secondLine.textColor = KeyboardTheme.secondaryText
         secondLine.lineBreakMode = .byTruncatingTail
         secondLine.translatesAutoresizingMaskIntoConstraints = false
+        secondLine.isHidden = true
 
         addSubview(firstLine)
         addSubview(secondLine)

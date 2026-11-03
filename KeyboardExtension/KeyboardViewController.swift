@@ -111,7 +111,7 @@ final class KeyboardViewController: UIInputViewController {
             keyboardView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         let height = view.heightAnchor.constraint(equalToConstant: CGFloat(settings.keyboardHeight))
-        height.priority = UILayoutPriority(999)
+        height.priority = .required
         height.isActive = true
         heightConstraint = height
         preferredContentSize = CGSize(width: 0, height: CGFloat(settings.keyboardHeight))
@@ -132,6 +132,7 @@ final class KeyboardViewController: UIInputViewController {
         updateReturnKeyLabel()
         refreshKeyboard(force: true)
         loadEngineIfNeeded()
+        refreshCandidates()
     }
 
     override func viewWillAppear(_ animated: Bool) {
