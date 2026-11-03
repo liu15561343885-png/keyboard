@@ -5,6 +5,7 @@ final class KeyboardView: UIView {
     var onAction: ((KeyAction) -> Void)?
     var onFeedback: ((KeyAction) -> Void)?
     var onCursorMove: ((Int) -> Void)?
+    var onPunctuationLongPress: (([String]) -> Void)?
 
     private let blurView: UIVisualEffectView
     private let tintView = UIView()
@@ -280,8 +281,15 @@ final class KeyboardView: UIView {
         for cell in KeyboardLayout.nineKeyGrid(returnKeyLabel: returnKeyLabel) {
             let button = KeyButton(spec: cell.spec)
             button.onPress = { [weak self] in self?.onFeedback?(cell.spec.action) }
-            let event: UIControl.Event = cell.spec.action == .space ? .touchUpInside : .touchDown
+            let variants = Self.punctuationVariants[cell.spec.label] ?? []
+            button.variants = variants
+            let event: UIControl.Event = (cell.spec.action == .space || !variants.isEmpty) ? .touchUpInside : .touchDown
             button.addTarget(self, action: #selector(keyTapped(_:)), for: event)
+            if !variants.isEmpty {
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(punctuationLongPressed(_:)))
+                longPress.minimumPressDuration = 0.35
+                button.addGestureRecognizer(longPress)
+            }
             if cell.spec.action == .backspace {
                 let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
                 longPress.minimumPressDuration = 0.45
@@ -301,6 +309,21 @@ final class KeyboardView: UIView {
                 button.bottomAnchor.constraint(equalTo: rows[lastRow].bottomAnchor)
             ])
         }
+    }
+
+    private static let punctuationVariants: [String: [String]] = [
+        "，": ["，", "、", "。", "？", "！", "；", "："],
+        "。": ["。", "，", "、", "？", "！", "…"],
+        "？": ["？", "！", "，", "。"],
+        "！": ["！", "？", "，", "。"],
+        "-": ["-", "—", "–", "_"],
+        ".": [".", "…", "。", "·"],
+        ",": [",", "，", "、", "；"]
+    ]
+
+    @objc private func punctuationLongPressed(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let button = gesture.view as? KeyButton, !button.variants.isEmpty else { return }
+        onPunctuationLongPress?(button.variants)
     }
 
     @objc private func keyTapped(_ sender: KeyButton) {

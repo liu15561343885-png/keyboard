@@ -100,6 +100,9 @@ final class KeyboardViewController: UIInputViewController {
         keyboardView.onCursorMove = { [weak self] offset in
             self?.textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
         }
+        keyboardView.onPunctuationLongPress = { [weak self] variants in
+            self?.presentPunctuationVariants(variants)
+        }
         view.addSubview(keyboardView)
         NSLayoutConstraint.activate([
             keyboardView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -494,6 +497,22 @@ final class KeyboardViewController: UIInputViewController {
                 self.keyboardView.update(candidates: result)
             }
         }
+    }
+
+    private func presentPunctuationVariants(_ variants: [String]) {
+        let sheet = UIAlertController(title: "选择标点", message: nil, preferredStyle: .actionSheet)
+        for variant in variants {
+            sheet.addAction(UIAlertAction(title: variant, style: .default) { [weak self] _ in
+                self?.textSink.insertText(variant)
+                self?.feedback(for: .character(variant))
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = keyboardView
+            popover.sourceRect = CGRect(x: keyboardView.bounds.midX, y: keyboardView.bounds.midY, width: 1, height: 1)
+        }
+        present(sheet, animated: true)
     }
 
     private func applyAppearance() {

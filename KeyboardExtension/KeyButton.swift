@@ -9,6 +9,7 @@ final class KeyButton: UIControl {
     private let weight: CGFloat
 
     var onPress: (() -> Void)?
+    var variants: [String] = []
 
     init(spec: KeySpec) {
         self.action = spec.action
