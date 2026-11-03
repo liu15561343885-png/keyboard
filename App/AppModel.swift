@@ -4,6 +4,17 @@ import PrivateKeyboardUpdater
 import SwiftUI
 import UIKit
 
+private enum SettingsPasteboard {
+    static let name = UIPasteboard.Name("com.liu15561343885.privatekeyboard.settings")
+    static let type = "com.liu15561343885.privatekeyboard.settings"
+
+    static func write(_ settings: KeyboardSettings) {
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        let board = UIPasteboard(name: name, create: true)
+        board?.setData(data, forPasteboardType: type)
+    }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var settings: KeyboardSettings
@@ -49,6 +60,9 @@ final class AppModel: ObservableObject {
         if !isUpdateConfigured {
             updateStatus = "未配置更新源（见 README）"
         }
+        if AppGroup.containerURL() == nil {
+            SettingsPasteboard.write(settings)
+        }
     }
 
     func performStartupTasks() async {
@@ -80,6 +94,22 @@ final class AppModel: ObservableObject {
 
     func setNineKey(_ enabled: Bool) {
         settings.nineKeyEnabled = enabled
+        save()
+    }
+
+    func setAppearance(_ keyPath: WritableKeyPath<KeyboardSettings, Double>, _ value: Double) {
+        settings[keyPath: keyPath] = value
+        save()
+    }
+
+    func resetAppearance() {
+        let defaults = KeyboardSettings()
+        settings.keyCornerRadius = defaults.keyCornerRadius
+        settings.keyOpacity = defaults.keyOpacity
+        settings.keyBorderOpacity = defaults.keyBorderOpacity
+        settings.keyboardHeight = defaults.keyboardHeight
+        settings.keyboardHorizontalInset = defaults.keyboardHorizontalInset
+        settings.keySpacing = defaults.keySpacing
         save()
     }
 
@@ -153,6 +183,9 @@ final class AppModel: ObservableObject {
 
     private func save() {
         settingsStore.save(settings)
+        if AppGroup.containerURL() == nil {
+            SettingsPasteboard.write(settings)
+        }
     }
 
     private func checkAndInstallIfNeeded(automatic: Bool) async {

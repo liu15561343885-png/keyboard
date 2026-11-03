@@ -16,7 +16,7 @@ final class KeyButton: UIControl {
         self.weight = max(0.1, spec.weight)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        layer.cornerRadius = 9
+        layer.cornerRadius = KeyboardTheme.cornerRadius
         layer.cornerCurve = .continuous
         layer.masksToBounds = false
         layer.shadowColor = UIColor.black.cgColor
@@ -68,6 +68,12 @@ final class KeyButton: UIControl {
     override var isHighlighted: Bool {
         didSet {
             backgroundColor = isHighlighted ? KeyboardTheme.pressedKey : normalBackground
+            UIView.animate(withDuration: 0.08) {
+                self.transform = self.isHighlighted
+                    ? CGAffineTransform(scaleX: 0.96, y: 0.96)
+                    : .identity
+                self.alpha = self.isHighlighted ? 0.82 : 1
+            }
         }
     }
 
@@ -115,8 +121,8 @@ final class KeyButton: UIControl {
 
     private func applyStyle() {
         backgroundColor = normalBackground
-        layer.borderWidth = 0.5
-        layer.borderColor = KeyboardTheme.separator.cgColor
+        layer.borderWidth = KeyboardTheme.borderOpacity > 0 ? 0.5 : 0
+        layer.borderColor = KeyboardTheme.separator.withAlphaComponent(KeyboardTheme.borderOpacity).cgColor
         icon.tintColor = KeyboardTheme.keyText
         switch style {
         case .letter:

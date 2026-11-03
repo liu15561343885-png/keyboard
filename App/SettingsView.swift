@@ -61,6 +61,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     NavigationLink("自定义词库") { CustomWordsView(model: model) }
+                    NavigationLink("键盘外观") { KeyboardAppearanceView(model: model) }
                 }
 
                 Section {
@@ -167,5 +168,56 @@ private struct LicensesView: View {
             .padding()
         }
         .navigationTitle("许可与来源")
+    }
+}
+
+
+struct KeyboardAppearanceView: View {
+    @ObservedObject var model: AppModel
+
+    private func binding(_ keyPath: WritableKeyPath<KeyboardSettings, Double>) -> Binding<Double> {
+        Binding(
+            get: { model.settings[keyPath: keyPath] },
+            set: { model.setAppearance(keyPath, $0) }
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section("按键") {
+                appearanceSlider("圆角", value: binding(\.keyCornerRadius), range: 0...16, format: "%.0f pt")
+                appearanceSlider("按键透明度", value: binding(\.keyOpacity), range: 0.3...1, format: "%.2f")
+                appearanceSlider("边框透明度", value: binding(\.keyBorderOpacity), range: 0...0.6, format: "%.2f")
+                appearanceSlider("键间距", value: binding(\.keySpacing), range: 0...8, format: "%.1f pt")
+            }
+            Section {
+                appearanceSlider("键盘高度", value: binding(\.keyboardHeight), range: 240...340, format: "%.0f pt")
+                appearanceSlider("左右内缩", value: binding(\.keyboardHorizontalInset), range: 0...24, format: "%.0f pt")
+                Button("恢复默认外观") { model.resetAppearance() }
+            } header: {
+                Text("键盘")
+            } footer: {
+                Text("外观设置会写入 App Group；免费签名不支持 App Group 时使用本机剪贴板桥接。键盘下次显示时生效。")
+            }
+        }
+        .navigationTitle("键盘外观")
+    }
+
+    private func appearanceSlider(
+        _ title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        format: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(String(format: format, value.wrappedValue))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: value, in: range)
+        }
     }
 }

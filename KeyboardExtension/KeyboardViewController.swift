@@ -13,6 +13,16 @@ private final class TextDocumentProxySink: KeyboardTextSink {
     func deleteBackward() { proxy.deleteBackward() }
 }
 
+private enum SettingsPasteboard {
+    static let name = UIPasteboard.Name("com.liu15561343885.privatekeyboard.settings")
+    static let type = "com.liu15561343885.privatekeyboard.settings"
+
+    static func read() -> KeyboardSettings? {
+        guard let data = UIPasteboard(name: name, create: true)?.data(forPasteboardType: type) else { return nil }
+        return try? JSONDecoder().decode(KeyboardSettings.self, from: data)
+    }
+}
+
 final class KeyboardInputView: UIInputView, UIInputViewAudioFeedback {
     var enableInputClicksWhenVisible: Bool { true }
 }
@@ -55,6 +65,7 @@ final class KeyboardViewController: UIInputViewController {
     private var nineKeyEnabled = false
     private var page: KeyboardPage = .letters
     private var isShifted = false
+    private var heightConstraint: NSLayoutConstraint?
     private var shiftLocked = false
     private var lastShiftTap: TimeInterval = 0
     private var returnKeyLabel = "换行"
@@ -86,10 +97,11 @@ final class KeyboardViewController: UIInputViewController {
             keyboardView.topAnchor.constraint(equalTo: view.topAnchor),
             keyboardView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        let height = view.heightAnchor.constraint(equalToConstant: KeyboardTheme.keyboardHeight)
+        let height = view.heightAnchor.constraint(equalToConstant: CGFloat(settings.keyboardHeight))
         height.priority = UILayoutPriority(999)
         height.isActive = true
-        preferredContentSize = CGSize(width: 0, height: KeyboardTheme.keyboardHeight)
+        heightConstraint = height
+        preferredContentSize = CGSize(width: 0, height: CGFloat(settings.keyboardHeight))
     }
 
     deinit {
@@ -103,6 +115,7 @@ final class KeyboardViewController: UIInputViewController {
         language = settings.lastLanguage
         nineKeyEnabled = settings.nineKeyEnabled
         isShifted = language == .english
+        applyAppearance()
         updateReturnKeyLabel()
         refreshKeyboard(force: true)
         loadEngineIfNeeded()
@@ -111,6 +124,10 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         settings = settingsStore.load()
+        if AppGroup.containerURL() == nil, let bridged = SettingsPasteboard.read() {
+            settings = bridged
+        }
+        applyAppearance()
         userHistory.reload()
         userLexicon.reload()
         let previousNineKey = nineKeyEnabled
@@ -191,7 +208,6 @@ final class KeyboardViewController: UIInputViewController {
         case .backspace:
             handleBackspace()
         case .shift:
-            guard language == .english else { return }
             let now = Date().timeIntervalSinceReferenceDate
             if now - lastShiftTap < 0.35 {
                 shiftLocked.toggle()
@@ -237,7 +253,9 @@ final class KeyboardViewController: UIInputViewController {
                 guard pinyinBuffer.count < 40 else { return }
                 let lower = rawValue.lowercased()
                 pinyinBuffer.append(lower)
-                textSink.insertText(lower)
+                textSink.insertText(isShifted ? rawValue.uppercased() : lower)
+                isShifted = shiftLocked
+                refreshKeyboard()
                 startCompositionMonitor()
                 refreshCandidates()
                 return
@@ -357,8 +375,8 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func autoShiftIfNeeded() {
-        guard language == .english else {
-            isShifted = false
+        if language == .chinese {
+            isShifted = shiftLocked
             refreshKeyboard()
             return
         }
@@ -410,7 +428,7 @@ final class KeyboardViewController: UIInputViewController {
                 }
             }
         }
-        isShifted = language == .english
+        isShifted = language == .english || shiftLocked
         candidates = []
         keyboardView.update(candidates: [])
         refreshKeyboard()
@@ -420,7 +438,13 @@ final class KeyboardViewController: UIInputViewController {
     private func refreshCandidates() {
         let isT9 = language == .chinese && nineKeyEnabled && !t9Buffer.isEmpty
         let query = isT9 ? t9Buffer : (language == .chinese ? pinyinBuffer : englishBuffer)
-        guard !query.isEmpty, let engine else {
+        guard !query.isEmpty else {
+            predictionGeneration += 1
+            candidates = idleCandidates()
+            keyboardView.update(candidates: candidates)
+            return
+        }
+        guard let engine else {
             predictionGeneration += 1
             candidates = []
             keyboardView.update(candidates: [])
@@ -458,6 +482,18 @@ final class KeyboardViewController: UIInputViewController {
                 self.keyboardView.update(candidates: result)
             }
         }
+    }
+
+    private func applyAppearance() {
+        KeyboardTheme.cornerRadius = CGFloat(settings.keyCornerRadius)
+        KeyboardTheme.keyOpacity = CGFloat(settings.keyOpacity)
+        KeyboardTheme.borderOpacity = CGFloat(settings.keyBorderOpacity)
+        KeyboardTheme.keyboardHeight = CGFloat(settings.keyboardHeight)
+        KeyboardTheme.horizontalMargin = CGFloat(settings.keyboardHorizontalInset)
+        KeyboardTheme.keySpacing = CGFloat(settings.keySpacing)
+        heightConstraint?.constant = CGFloat(settings.keyboardHeight)
+        preferredContentSize = CGSize(width: 0, height: CGFloat(settings.keyboardHeight))
+        keyboardView.applyAppearance()
     }
 
     private func refreshKeyboard(force: Bool = false) {
@@ -502,7 +538,7 @@ final class KeyboardViewController: UIInputViewController {
             candidates = []
             keyboardView.update(candidates: [])
             stopCompositionMonitor()
-        } else if language == .chinese, !pinyinBuffer.isEmpty, !context.hasSuffix(pinyinBuffer) {
+        } else if language == .chinese, !pinyinBuffer.isEmpty, !context.lowercased().hasSuffix(pinyinBuffer) {
             pinyinBuffer = ""
             predictionGeneration += 1
             candidates = []
@@ -529,6 +565,31 @@ final class KeyboardViewController: UIInputViewController {
     private func stopCompositionMonitor() {
         compositionMonitor?.invalidate()
         compositionMonitor = nil
+    }
+
+    private func idleCandidates() -> [InputCandidate] {
+        let words: [(String, String)]
+        if language == .chinese {
+            words = [("我", "wǒ"), ("你", "nǐ"), ("的", "de"), ("是", "shì"), ("了", "le"),
+                     ("在", "zài"), ("不", "bù"), ("有", "yǒu"), ("好", "hǎo"), ("吗", "ma"),
+                     ("这", "zhè"), ("就", "jiù"), ("都", "dōu"), ("也", "yě"), ("很", "hěn")]
+        } else {
+            words = [("the", ""), ("and", ""), ("you", ""), ("that", ""), ("this", ""),
+                     ("for", ""), ("with", ""), ("have", ""), ("not", ""), ("are", "")]
+        }
+        return words.map { text, pinyin in
+            InputCandidate(
+                id: "idle-\(language.rawValue)-\(text)",
+                text: text,
+                detail: "常用词",
+                kind: language == .chinese ? .chinese : .english,
+                pinyin: pinyin,
+                matchScore: 0,
+                entryID: nil,
+                baseFrequency: 0,
+                glosses: []
+            )
+        }
     }
 
     private func feedback() {
