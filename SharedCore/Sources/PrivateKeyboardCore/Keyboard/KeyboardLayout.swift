@@ -113,7 +113,7 @@ public enum KeyboardLayout {
         let row3: [KeySpec] = [
             KeySpec(shiftLabel, .shift, style: .function, weight: 1.35)
         ] + third + [
-            KeySpec("⌫", .backspace, style: .function, weight: 1.35)
+            KeySpec("⌫", .backspace, style: .function, weight: 1.28)
         ]
         return [first, second, row3, bottomRow(page: .letters, language: language, returnKeyLabel: returnKeyLabel)]
     }
@@ -181,9 +181,9 @@ public enum KeyboardLayout {
             left = KeySpec("ABC", .page(.letters), style: .function)
         }
         var keys: [KeySpec] = [left]
-        keys.append(KeySpec(language == .chinese ? "中" : "EN", .toggleLanguage, style: .function, weight: 1.05))
-        keys.append(KeySpec("空格", .space, style: .letter, weight: 4.4))
-        keys.append(KeySpec(returnKeyLabel, .returnKey, style: .accent, weight: 1.8))
+        keys.append(KeySpec(language == .chinese ? "中" : "EN", .toggleLanguage, style: .function, weight: 1.0))
+        keys.append(KeySpec("空格", .space, style: .letter, weight: 4.0))
+        keys.append(KeySpec(returnKeyLabel, .returnKey, style: .accent, weight: 2.0))
         return keys
     }
 }

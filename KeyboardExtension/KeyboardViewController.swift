@@ -51,6 +51,13 @@ final class KeyboardViewController: UIInputViewController {
     private lazy var settingsStore = SharedSettingsStore(defaults: AppGroup.settingsDefaults())
     private lazy var userHistory = UserHistoryStore(containerURL: containerURL)
     private lazy var userLexicon = UserLexiconStore(containerURL: containerURL)
+    private lazy var nextWords: [String: [String]] = {
+        guard let url = Bundle.main.url(forResource: "nextwords", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let map = try? JSONDecoder().decode([String: [String]].self, from: data)
+        else { return [:] }
+        return map
+    }()
 
     private var settings = KeyboardSettings()
     private var engine: PredictionEngine?
@@ -573,6 +580,24 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func idleCandidates() -> [InputCandidate] {
+        if language == .chinese,
+           let last = contextWords.last,
+           let predictions = nextWords[last],
+           !predictions.isEmpty {
+            return predictions.map { word in
+                InputCandidate(
+                    id: "next-\(last)-\(word)",
+                    text: word,
+                    detail: "联想词",
+                    kind: .chinese,
+                    pinyin: "",
+                    matchScore: 0,
+                    entryID: nil,
+                    baseFrequency: 0,
+                    glosses: []
+                )
+            }
+        }
         let fallback: [(String, String)]
         if language == .chinese {
             fallback = [("我", "wǒ"), ("你", "nǐ"), ("的", "de"), ("是", "shì"), ("了", "le"),

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0897723EBCAD3F1D93957925 /* nextwords.json in Resources */ = {isa = PBXBuildFile; fileRef = E0B050979EDB928F6457D53D /* nextwords.json */; };
 		0DDD4D54FD560EF6537B9C73 /* PRIVACY.md in Resources */ = {isa = PBXBuildFile; fileRef = 648457D73C85914BB7FA00EE /* PRIVACY.md */; };
 		1237A3E49471D823534EA99A /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 452A326E5E95B921C50C2FB9 /* LICENSE */; };
 		176A24E646C91B48DB7B8794 /* UpdatePublicKey.txt in Resources */ = {isa = PBXBuildFile; fileRef = E19D36B227CAD2934527C7D2 /* UpdatePublicKey.txt */; };
@@ -139,6 +140,7 @@
 		D536B0E3A36F6EE2007EE2D0 /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
 		D58B811B89DA9488305642EE /* CandidateBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateBarView.swift; sourceTree = "<group>"; };
 		DFBEA21CFC6488413D0A830B /* dictionary.zh-en.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = "dictionary.zh-en.bin"; sourceTree = "<group>"; };
+		E0B050979EDB928F6457D53D /* nextwords.json */ = {isa = PBXFileReference; includeInIndex = 1; path = nextwords.json; sourceTree = "<group>"; };
 		E19D36B227CAD2934527C7D2 /* UpdatePublicKey.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = UpdatePublicKey.txt; sourceTree = "<group>"; };
 		E2ECEF896DEA31B163A5823E /* UserLexiconTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLexiconTests.swift; sourceTree = "<group>"; };
 		F2285AF1F649A358F87D5FEB /* pinyin.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = pinyin.bin; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				1C3C2544FF464EF039E3ACDD /* lm.trigram.bin */,
 				B76F6A7047B5678942C06AFD /* NOTICE.txt */,
 				F2285AF1F649A358F87D5FEB /* pinyin.bin */,
+				E0B050979EDB928F6457D53D /* nextwords.json */,
 			);
 			path = Generated;
 			sourceTree = "<group>";
@@ -470,6 +473,7 @@
 				6CD7E88851D14916E0F036E9 /* lm.bigram.bin in Resources */,
 				BAC020A854F2D45C8F9DFC57 /* lm.trigram.bin in Resources */,
 				A8A11BD8755984800F8E3E35 /* pinyin.bin in Resources */,
+				0897723EBCAD3F1D93957925 /* nextwords.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

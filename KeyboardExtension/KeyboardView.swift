@@ -43,7 +43,7 @@ final class KeyboardView: UIView {
         rowsStack.axis = .vertical
         rowsStack.alignment = .fill
         rowsStack.distribution = .fillEqually
-        rowsStack.spacing = KeyboardTheme.keySpacing
+        rowsStack.spacing = 8
         rowsStack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(rowsStack)
 
@@ -65,7 +65,7 @@ final class KeyboardView: UIView {
             candidateBar.heightAnchor.constraint(equalToConstant: KeyboardTheme.candidateBarHeight),
 
             rowsStack.topAnchor.constraint(equalTo: candidateBar.bottomAnchor, constant: 4),
-            rowsStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+            rowsStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20),
 
             candidatePanel.leadingAnchor.constraint(equalTo: leadingAnchor),
             candidatePanel.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -93,7 +93,7 @@ final class KeyboardView: UIView {
 
     func applyAppearance() {
         layer.cornerRadius = KeyboardTheme.backgroundCornerRadius
-        rowsStack.spacing = KeyboardTheme.keySpacing
+        rowsStack.spacing = 8
         rowsLeadingConstraint?.constant = KeyboardTheme.horizontalMargin
         rowsTrailingConstraint?.constant = -KeyboardTheme.horizontalMargin
         rebuildKeys()
@@ -238,7 +238,7 @@ final class KeyboardView: UIView {
             grid.leadingAnchor.constraint(equalTo: leadingAnchor, constant: KeyboardTheme.horizontalMargin),
             grid.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -KeyboardTheme.horizontalMargin),
             grid.topAnchor.constraint(equalTo: candidateBar.bottomAnchor),
-            grid.bottomAnchor.constraint(equalTo: bottomAnchor)
+            grid.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20)
         ])
 
         var columns: [UILayoutGuide] = []

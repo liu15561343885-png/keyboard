@@ -1,6 +1,6 @@
 {
-  "builtAt" : "2026-11-03T06:36:50Z",
-  "dataVersion" : "2026.11.1",
+  "builtAt" : "2026-11-03T15:19:24Z",
+  "dataVersion" : "2026.11.2",
   "files" : [
     {
       "compression" : "none",
@@ -34,8 +34,8 @@
       "kind" : "ngram",
       "modelVersion" : "",
       "name" : "lm.bigram.bin",
-      "sha256" : "ebff4d2a719b389c7e9e50d6ba37a0b5c8a855e7d7b297daf98bbeb688bb4fd5",
-      "size" : 480040,
+      "sha256" : "019e57217b070e2fe862d17dc449da7df0176f406836ac6ecd2a8f88e831c0ff",
+      "size" : 1169968,
       "url" : "https://example.invalid/releases/lm.bigram.bin"
     },
     {
@@ -43,8 +43,8 @@
       "kind" : "ngram",
       "modelVersion" : "",
       "name" : "lm.trigram.bin",
-      "sha256" : "850213d517f32a464ea423ff0f710e5f235ee4fc7d2bffc788129730c3d34589",
-      "size" : 640040,
+      "sha256" : "e8f08f94a57804eea460fcff67afd4a5467bf2882924170450cb4f4db01be72e",
+      "size" : 942216,
       "url" : "https://example.invalid/releases/lm.trigram.bin"
     },
     {
@@ -60,7 +60,7 @@
   "minAppVersion" : "1.0.0",
   "minOSVersion" : "17.0",
   "schemaVersion" : 1,
-  "signature" : "qfSrrFKzRQglO+QMbu43KdT2wJJUxXSv7X8GIQLQRQoSZSwt5Yi2WbakULxtQdvEtxOH3koUT2RTRSKgFybQAg==",
+  "signature" : "r8gl9EVMSpVCjsgEgRTdCwM+vCC24HvtzyqcexevxW8vcHTrz90+FYTSH0J86D6zQzWpi1CskdweSjD4HgwDBQ==",
   "source" : {
     "attribution" : "CC-CEDICT by MDBG; frequency data derived from wordfreq by Robyn Speer; n-gram counts derived from Tatoeba contributors; jieba by fxsjy. See THIRD_PARTY_LICENSES.md.",
     "license" : "CC BY-SA 4.0 (CC-CEDICT, wordfreq); CC BY 2.0 FR (Tatoeba n-grams); MIT (jieba)",
