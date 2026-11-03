@@ -64,17 +64,42 @@ let candidate = InputCandidate(
     baseFrequency: 100,
     glosses: []
 )
-keyboard.update(candidates: [candidate, candidate, candidate])
+var manyCandidates = [candidate]
+for index in 1..<24 {
+    manyCandidates.append(
+        InputCandidate(
+            id: "test-\(index)",
+            text: "候选\(index)",
+            detail: "detail \(index)",
+            kind: .chinese,
+            pinyin: "hou xuan",
+            matchScore: 0.5,
+            entryID: nil,
+            baseFrequency: 1,
+            glosses: []
+        )
+    )
+}
+keyboard.update(candidates: manyCandidates)
 keyboard.layoutIfNeeded()
 let candidateCells = allSubviews(keyboard).filter { String(describing: type(of: $0)) == "CandidateCell" }
 print("candidate cells:", candidateCells.count)
-precondition(candidateCells.count == 3, "expected 3 candidate cells, got \(candidateCells.count)")
+precondition(candidateCells.count == 24, "expected 24 candidate cells, got \(candidateCells.count)")
 let candidateLabels = candidateCells.flatMap { allSubviews($0) }.compactMap { ($0 as? UILabel)?.text }
 precondition(candidateLabels.contains("你好"), "missing candidate first line")
 precondition(candidateLabels.contains("phr. hello"), "missing candidate second line")
 if let bar = allSubviews(keyboard).compactMap({ $0 as? CandidateBarView }).first {
     print("candidate bar height:", bar.bounds.height)
     precondition(abs(bar.bounds.height - KeyboardTheme.candidateBarHeight) < 0.5, "unexpected candidate bar height")
+    if let scroll = allSubviews(bar).compactMap({ $0 as? UIScrollView }).first {
+        bar.layoutIfNeeded()
+        scroll.layoutIfNeeded()
+        print("candidate scroll width:", scroll.contentSize.width, "viewport:", scroll.bounds.width)
+        fflush(stdout)
+        precondition(scroll.contentSize.width > scroll.bounds.width, "candidate bar is not horizontally scrollable")
+    } else {
+        preconditionFailure("candidate scroll view not found")
+    }
 } else {
     preconditionFailure("candidate bar not found")
 }
