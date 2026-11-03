@@ -89,7 +89,7 @@ public enum KeyboardLayout {
             NineKeyCell(KeySpec("MNO", .character("6")), row: 1, column: 3),
             NineKeyCell(KeySpec("标点", .page(.punctuation), style: .function), row: 1, column: 4),
 
-            NineKeyCell(KeySpec("中", .toggleLanguage, style: .function), row: 2, column: 0),
+            NineKeyCell(KeySpec("ABC", .toggleLanguage, style: .function), row: 2, column: 0),
             NineKeyCell(KeySpec("PQRS", .character("7")), row: 2, column: 1),
             NineKeyCell(KeySpec("TUV", .character("8")), row: 2, column: 2),
             NineKeyCell(KeySpec("WXYZ", .character("9")), row: 2, column: 3),
