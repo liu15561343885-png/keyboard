@@ -1,13 +1,13 @@
 import Foundation
 
-public enum KeyboardPage: Equatable {
+public enum KeyboardPage: Equatable, Sendable {
     case letters
     case numbers
     case symbols
     case punctuation
 }
 
-public enum KeyAction: Equatable {
+public enum KeyAction: Equatable, Sendable {
     case character(String)
     case backspace
     case shift
@@ -15,17 +15,16 @@ public enum KeyAction: Equatable {
     case returnKey
     case nextKeyboard
     case toggleLanguage
-    case toggleNineKey
     case page(KeyboardPage)
 }
 
-public enum KeyStyle: Equatable {
+public enum KeyStyle: Equatable, Sendable {
     case letter
     case function
     case accent
 }
 
-public struct KeySpec: Equatable {
+public struct KeySpec: Equatable, Sendable {
     public let label: String
     public let action: KeyAction
     public let style: KeyStyle
@@ -39,20 +38,32 @@ public struct KeySpec: Equatable {
     }
 }
 
+public struct NineKeyCell: Equatable, Sendable {
+    public let spec: KeySpec
+    public let row: Int
+    public let column: Int
+    public let rowSpan: Int
+    public let columnSpan: Int
+
+    public init(_ spec: KeySpec, row: Int, column: Int, rowSpan: Int = 1, columnSpan: Int = 1) {
+        self.spec = spec
+        self.row = row
+        self.column = column
+        self.rowSpan = rowSpan
+        self.columnSpan = columnSpan
+    }
+}
+
 public enum KeyboardLayout {
     public static func rows(
         page: KeyboardPage,
         language: InputLanguage,
         shifted: Bool,
         capsLocked: Bool = false,
-        returnKeyLabel: String = "换行",
-        nineKey: Bool = false
+        returnKeyLabel: String = "换行"
     ) -> [[KeySpec]] {
         switch page {
         case .letters:
-            if language == .chinese, nineKey {
-                return nineKeyRows(language: language, returnKeyLabel: returnKeyLabel)
-            }
             return letterRows(language: language, shifted: shifted, capsLocked: capsLocked, returnKeyLabel: returnKeyLabel)
         case .numbers:
             return numberRows(language: language, returnKeyLabel: returnKeyLabel)
@@ -63,33 +74,30 @@ public enum KeyboardLayout {
         }
     }
 
-    private static func nineKeyRows(language: InputLanguage, returnKeyLabel: String) -> [[KeySpec]] {
-        let first: [KeySpec] = [
-            KeySpec("，", .character("，"), style: .function),
-            KeySpec("2 ABC", .character("2")),
-            KeySpec("3 DEF", .character("3"))
+    public static func nineKeyGrid(returnKeyLabel: String) -> [NineKeyCell] {
+        [
+            NineKeyCell(KeySpec("123", .page(.numbers), style: .function), row: 0, column: 0),
+            NineKeyCell(KeySpec("，", .character("，"), style: .function), row: 0, column: 1),
+            NineKeyCell(KeySpec("ABC", .character("2")), row: 0, column: 2),
+            NineKeyCell(KeySpec("DEF", .character("3")), row: 0, column: 3),
+            NineKeyCell(KeySpec("⌫", .backspace, style: .function, weight: 1.0), row: 0, column: 4),
+
+            NineKeyCell(KeySpec("#+=", .page(.symbols), style: .function), row: 1, column: 0),
+            NineKeyCell(KeySpec("GHI", .character("4")), row: 1, column: 1),
+            NineKeyCell(KeySpec("JKL", .character("5")), row: 1, column: 2),
+            NineKeyCell(KeySpec("MNO", .character("6")), row: 1, column: 3),
+            NineKeyCell(KeySpec("标点", .page(.punctuation), style: .function), row: 1, column: 4),
+
+            NineKeyCell(KeySpec("中", .toggleLanguage, style: .function), row: 2, column: 0),
+            NineKeyCell(KeySpec("PQRS", .character("7")), row: 2, column: 1),
+            NineKeyCell(KeySpec("TUV", .character("8")), row: 2, column: 2),
+            NineKeyCell(KeySpec("WXYZ", .character("9")), row: 2, column: 3),
+            NineKeyCell(KeySpec(returnKeyLabel, .returnKey, style: .accent), row: 2, column: 4, rowSpan: 2),
+
+            NineKeyCell(KeySpec("。", .character("。"), style: .function), row: 3, column: 0),
+            NineKeyCell(KeySpec("标点", .page(.punctuation), style: .function), row: 3, column: 1),
+            NineKeyCell(KeySpec("空格", .space, style: .letter), row: 3, column: 2, columnSpan: 2)
         ]
-        let second: [KeySpec] = [
-            KeySpec("4 GHI", .character("4")),
-            KeySpec("5 JKL", .character("5")),
-            KeySpec("6 MNO", .character("6"))
-        ]
-        let third: [KeySpec] = [
-            KeySpec("7 PQRS", .character("7")),
-            KeySpec("8 TUV", .character("8")),
-            KeySpec("9 WXYZ", .character("9"))
-        ]
-        let fourth: [KeySpec] = [
-            KeySpec("。", .character("。"), style: .function),
-            KeySpec("0", .character("0")),
-            KeySpec("⌫", .backspace, style: .function, weight: 1.25)
-        ]
-        return [first, second, third, fourth, bottomRow(
-            page: .letters,
-            language: language,
-            returnKeyLabel: returnKeyLabel,
-            nineKey: true
-        )]
     }
 
     private static func letterRows(language: InputLanguage, shifted: Bool, capsLocked: Bool, returnKeyLabel: String) -> [[KeySpec]] {
@@ -162,8 +170,7 @@ public enum KeyboardLayout {
     private static func bottomRow(
         page: KeyboardPage,
         language: InputLanguage,
-        returnKeyLabel: String,
-        nineKey: Bool = false
+        returnKeyLabel: String
     ) -> [KeySpec] {
         let left: KeySpec
         switch page {
@@ -173,9 +180,6 @@ public enum KeyboardLayout {
             left = KeySpec("ABC", .page(.letters), style: .function)
         }
         var keys: [KeySpec] = [left]
-        if page == .letters, language == .chinese {
-            keys.append(KeySpec(nineKey ? "26键" : "九键", .toggleNineKey, style: .function, weight: 1.1))
-        }
         keys.append(KeySpec(language == .chinese ? "中" : "EN", .toggleLanguage, style: .function, weight: 1.05))
         keys.append(KeySpec("空格", .space, style: .letter, weight: 4.4))
         keys.append(KeySpec(returnKeyLabel, .returnKey, style: .accent, weight: 1.8))

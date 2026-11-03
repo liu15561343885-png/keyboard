@@ -6,7 +6,7 @@ final class KeyboardView: UIView {
     var onFeedback: (() -> Void)?
     var onCursorMove: ((Int) -> Void)?
 
-    private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+    private let blurView: UIVisualEffectView
     private let candidateBar = CandidateBarView()
     private let candidatePanel = CandidatePanelView()
     private let rowsStack = UIStackView()
@@ -17,6 +17,7 @@ final class KeyboardView: UIView {
     private var capsLocked = false
     private var returnKeyLabel = "换行"
     private var nineKey = false
+    private var nineGrid: UIView?
     private var deleteTimer: Timer?
     private var lastLongPressDeleteEnd: TimeInterval = 0
     private var lastCursorMoveEnd: TimeInterval = 0
@@ -24,6 +25,7 @@ final class KeyboardView: UIView {
     private var cursorRemainder: CGFloat = 0
 
     override init(frame: CGRect) {
+        blurView = UIVisualEffectView(effect: Self.glassEffect())
         super.init(frame: frame)
         backgroundColor = .clear
         translatesAutoresizingMaskIntoConstraints = false
@@ -91,12 +93,23 @@ final class KeyboardView: UIView {
         }
     }
 
+    private static func glassEffect() -> UIVisualEffect {
+        // Built with the iOS 18 SDK, but runs on iOS 26/27. Resolve the native
+        // Liquid Glass effect at runtime and fall back to material on older OS.
+        if let glassType = NSClassFromString("UIGlassEffect") as? NSObject.Type,
+           let effect = glassType.init() as? UIVisualEffect {
+            return effect
+        }
+        return UIBlurEffect(style: .systemUltraThinMaterial)
+    }
+
     private func toggleCandidates() {
         guard !candidateBar.isHidden else { return }
         candidatesExpanded.toggle()
         candidateBar.setExpanded(candidatesExpanded)
         candidatePanel.isHidden = !candidatesExpanded
         rowsStack.isHidden = candidatesExpanded
+        nineGrid?.isHidden = candidatesExpanded
         onFeedback?()
     }
 
@@ -105,7 +118,12 @@ final class KeyboardView: UIView {
         candidatesExpanded = false
         candidateBar.setExpanded(false)
         candidatePanel.isHidden = true
-        rowsStack.isHidden = false
+        if nineKey, currentPage == .letters, currentLanguage == .chinese {
+            rowsStack.isHidden = true
+            nineGrid?.isHidden = false
+        } else {
+            rowsStack.isHidden = false
+        }
     }
 
     func configure(
@@ -139,17 +157,24 @@ final class KeyboardView: UIView {
     private func rebuildKeys() {
         deleteTimer?.invalidate()
         deleteTimer = nil
+        nineGrid?.removeFromSuperview()
+        nineGrid = nil
         for view in rowsStack.arrangedSubviews {
             rowsStack.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
+        if nineKey, currentPage == .letters, currentLanguage == .chinese {
+            rowsStack.isHidden = true
+            buildNineKeyGrid()
+            return
+        }
+        rowsStack.isHidden = false
         let rows = KeyboardLayout.rows(
             page: currentPage,
             language: currentLanguage,
             shifted: isShifted,
             capsLocked: capsLocked,
-            returnKeyLabel: returnKeyLabel,
-            nineKey: nineKey
+            returnKeyLabel: returnKeyLabel
         )
         for specs in rows {
             let row = UIStackView()
@@ -175,6 +200,68 @@ final class KeyboardView: UIView {
                 row.addArrangedSubview(button)
             }
             rowsStack.addArrangedSubview(row)
+        }
+    }
+
+    private func buildNineKeyGrid() {
+        let grid = UIView()
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        insertSubview(grid, belowSubview: candidatePanel)
+        nineGrid = grid
+        NSLayoutConstraint.activate([
+            grid.leadingAnchor.constraint(equalTo: leadingAnchor),
+            grid.trailingAnchor.constraint(equalTo: trailingAnchor),
+            grid.topAnchor.constraint(equalTo: candidateBar.bottomAnchor),
+            grid.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+
+        var columns: [UILayoutGuide] = []
+        for _ in 0..<5 {
+            let guide = UILayoutGuide()
+            grid.addLayoutGuide(guide)
+            columns.append(guide)
+        }
+        var rows: [UILayoutGuide] = []
+        for _ in 0..<4 {
+            let guide = UILayoutGuide()
+            grid.addLayoutGuide(guide)
+            rows.append(guide)
+        }
+        columns[0].leadingAnchor.constraint(equalTo: grid.leadingAnchor).isActive = true
+        rows[0].topAnchor.constraint(equalTo: grid.topAnchor).isActive = true
+        for index in 1..<columns.count {
+            columns[index].leadingAnchor.constraint(equalTo: columns[index - 1].trailingAnchor).isActive = true
+            columns[index].widthAnchor.constraint(equalTo: columns[0].widthAnchor).isActive = true
+        }
+        for index in 1..<rows.count {
+            rows[index].topAnchor.constraint(equalTo: rows[index - 1].bottomAnchor).isActive = true
+            rows[index].heightAnchor.constraint(equalTo: rows[0].heightAnchor).isActive = true
+        }
+        columns.last?.trailingAnchor.constraint(equalTo: grid.trailingAnchor).isActive = true
+        rows.last?.bottomAnchor.constraint(equalTo: grid.bottomAnchor).isActive = true
+
+        for cell in KeyboardLayout.nineKeyGrid(returnKeyLabel: returnKeyLabel) {
+            let button = KeyButton(spec: cell.spec)
+            button.onPress = { [weak self] in self?.onFeedback?() }
+            button.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
+            if cell.spec.action == .backspace {
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
+                longPress.minimumPressDuration = 0.45
+                button.addGestureRecognizer(longPress)
+            } else if cell.spec.action == .space {
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(spaceLongPressed(_:)))
+                longPress.minimumPressDuration = 0.3
+                button.addGestureRecognizer(longPress)
+            }
+            grid.addSubview(button)
+            let lastColumn = min(columns.count - 1, cell.column + cell.columnSpan - 1)
+            let lastRow = min(rows.count - 1, cell.row + cell.rowSpan - 1)
+            NSLayoutConstraint.activate([
+                button.leadingAnchor.constraint(equalTo: columns[cell.column].leadingAnchor),
+                button.trailingAnchor.constraint(equalTo: columns[lastColumn].trailingAnchor),
+                button.topAnchor.constraint(equalTo: rows[cell.row].topAnchor),
+                button.bottomAnchor.constraint(equalTo: rows[lastRow].bottomAnchor)
+            ])
         }
     }
 

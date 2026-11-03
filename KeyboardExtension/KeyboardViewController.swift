@@ -113,11 +113,16 @@ final class KeyboardViewController: UIInputViewController {
         settings = settingsStore.load()
         userHistory.reload()
         userLexicon.reload()
+        let previousNineKey = nineKeyEnabled
+        nineKeyEnabled = settings.nineKeyEnabled
         if settings.lastLanguage != language {
             language = settings.lastLanguage
-            nineKeyEnabled = settings.nineKeyEnabled
             shiftLocked = false
             isShifted = language == .english
+        }
+        if previousNineKey != nineKeyEnabled {
+            page = .letters
+            refreshKeyboard(force: true)
         }
         updateReturnKeyLabel()
         refreshKeyboard(force: true)
@@ -205,8 +210,6 @@ final class KeyboardViewController: UIInputViewController {
             advanceToNextInputMode()
         case .toggleLanguage:
             toggleLanguage()
-        case .toggleNineKey:
-            toggleNineKey()
         case .page(let nextPage):
             page = nextPage
             refreshKeyboard(force: true)
@@ -334,16 +337,6 @@ final class KeyboardViewController: UIInputViewController {
         isShifted = language == .english
         settings.lastLanguage = language
         settingsStore.save(settings)
-        refreshKeyboard(force: true)
-        refreshCandidates()
-    }
-
-    private func toggleNineKey() {
-        deleteCompositionBuffer()
-        nineKeyEnabled.toggle()
-        settings.nineKeyEnabled = nineKeyEnabled
-        settingsStore.save(settings)
-        page = .letters
         refreshKeyboard(force: true)
         refreshCandidates()
     }
