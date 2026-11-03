@@ -28,6 +28,11 @@ jobs:
       - name: Core end-to-end checks
         run: swift run -c release core-check Resources/Generated
 
+      - name: Catalyst UI smoke checks
+        run: |
+          ./scripts/typecheck_catalyst.sh
+          ./scripts/smoke_keyboard_catalyst.sh
+
       - name: Package tests (XCTest)
         run: swift test
 

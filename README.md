@@ -41,11 +41,12 @@ swift build
 swift run core-check Resources/Generated
 ./scripts/check_privacy.sh
 ./scripts/typecheck_catalyst.sh
+./scripts/smoke_keyboard_catalyst.sh
 ```
 
 `core-check` 会实际打开内置二进制词库、执行连续拼音切分、候选生成、Core ML 推理、用户词频、签名 manifest 安装与回滚，并打印 Top-1/Top-3/Top-5 与延迟指标。
 
-`typecheck_catalyst.sh` 使用 macOS SDK 内置的 Mac Catalyst UIKit/SwiftUI 对 App 和键盘扩展做类型检查；它不能替代 iOS SDK 构建，但能在没有 Xcode 时捕获 UIKit/SwiftUI API 和类型错误。
+`typecheck_catalyst.sh` 使用 macOS SDK 内置的 Mac Catalyst UIKit/SwiftUI 对 App 和键盘扩展做类型检查；`smoke_keyboard_catalyst.sh` 进一步在 Catalyst 下实例化键盘视图并检查字母/数字/Emoji 页面与候选控件布局。它们不能替代 iOS SDK 构建，但能在没有 Xcode 时捕获 UIKit/SwiftUI API、类型和视图构建错误。
 
 ### 2. 用 Xcode 构建 App
 
@@ -72,7 +73,7 @@ xcodebuild -project PrivateKeyboard.xcodeproj \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-> 当前开发机只有 Command Line Tools，`swift test` 会报 `no such module 'XCTest'`。测试文件已经通过语法解析和基于 XCTest 接口桩的类型检查；完整 XCTest 需在有 Xcode 的环境运行。
+> 当前开发机只有 Command Line Tools，`swift test` 会报 `no such module 'XCTest'`。测试文件已通过类型检查，24 个测试方法也已用本地 XCTest 兼容 shim 执行通过；标准 `swift test` 仍需 Xcode。
 
 ## 架构
 
@@ -218,10 +219,11 @@ swift run core-check Resources/Generated
 
 当前本地验证结果（2026-11-03）：
 
-- 20 个 XCTest 测试方法：**20/20 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
+- 24 个 XCTest 测试方法：**24/24 通过**（通过 XCTest 兼容 shim 执行；标准 `swift test` 仍需 Xcode）
 - Host App 与 Keyboard Extension：**Catalyst 类型检查通过**（不是 iOS SDK 构建）
+- 键盘视图：Catalyst 下构建并布局通过（26 键字母页、数字页、Emoji 页、候选栏）
 - 92 条中文金标准：Top-1 **100%**，Top-3 **100%**，Top-5 **100%**
-- 候选平均延迟 **6.38 ms**，p95 **12.98 ms**（macOS Release；真机待测）
+- 候选平均延迟 **5.69 ms**，p95 **10.78 ms**（macOS Release；真机待测）
 - Core ML：`Core ML micro-linear-1 · f1ec5f0b46`
 - 词库：123,581 词条，464,188 英文释义
 - 中英词典前缀查询：10/10

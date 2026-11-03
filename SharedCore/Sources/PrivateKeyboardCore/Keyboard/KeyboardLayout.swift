@@ -1,14 +1,13 @@
 import Foundation
-import PrivateKeyboardCore
 
-enum KeyboardPage: Equatable {
+public enum KeyboardPage: Equatable {
     case letters
     case numbers
     case symbols
     case emoji
 }
 
-enum KeyAction: Equatable {
+public enum KeyAction: Equatable {
     case character(String)
     case backspace
     case shift
@@ -20,20 +19,20 @@ enum KeyAction: Equatable {
     case emoji(String)
 }
 
-enum KeyStyle: Equatable {
+public enum KeyStyle: Equatable {
     case letter
     case function
     case accent
     case emoji
 }
 
-struct KeySpec: Equatable {
-    let label: String
-    let action: KeyAction
-    let style: KeyStyle
-    let weight: CGFloat
+public struct KeySpec: Equatable {
+    public let label: String
+    public let action: KeyAction
+    public let style: KeyStyle
+    public let weight: CGFloat
 
-    init(_ label: String, _ action: KeyAction, style: KeyStyle = .letter, weight: CGFloat = 1) {
+    public init(_ label: String, _ action: KeyAction, style: KeyStyle = .letter, weight: CGFloat = 1) {
         self.label = label
         self.action = action
         self.style = style
@@ -41,7 +40,7 @@ struct KeySpec: Equatable {
     }
 }
 
-enum KeyboardLayout {
+public enum KeyboardLayout {
     private static let emojiRows: [[String]] = [
         ["😀", "😄", "😁", "😂", "🥹", "😊", "😍", "🥰"],
         ["😎", "🤔", "😅", "😭", "😡", "👍", "👏", "🙏"],
@@ -49,7 +48,7 @@ enum KeyboardLayout {
         ["🍜", "☕️", "🌧️", "🌙", "🚗", "🏠", "📱", "💻"]
     ]
 
-    static func rows(page: KeyboardPage, language: InputLanguage, shifted: Bool) -> [[KeySpec]] {
+    public static func rows(page: KeyboardPage, language: InputLanguage, shifted: Bool) -> [[KeySpec]] {
         switch page {
         case .letters:
             return letterRows(language: language, shifted: shifted)

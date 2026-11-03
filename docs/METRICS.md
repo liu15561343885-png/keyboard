@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，20 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，24 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -26,9 +26,9 @@
 | 中文 Top-3 命中率 | **100%** | 同上 |
 | 中文 Top-5 命中率 | **100%** | 同上 |
 | 中英词典前缀命中率 | **100%** | 10 条英文查询各取至少 1 条 |
-| 候选平均延迟 | **6.38 ms** | 92 次串行查询，Release，macOS；多次运行约 6–8 ms |
-| 候选 p95 延迟 | **12.98 ms** | 同上 |
-| 候选最大延迟 | **37.02 ms** | 同上 |
+| 候选平均延迟 | **5.69 ms** | 92 次串行查询，Release，macOS；多次运行约 5.7–6.4 ms |
+| 候选 p95 延迟 | **10.78 ms** | 同上 |
+| 候选最大延迟 | **32.49 ms** | 同上 |
 | 连续拼音组合 | 通过 | `nihaobeijing` → `你好北京` |
 | 模糊拼音 | 通过 | `zongguo` + zh/z → `中国` |
 | 简拼 | 通过 | `nh` → 含 `你好` |
@@ -37,7 +37,8 @@
 | 安装/回滚 | 通过 | 两次安装 + rollback 测试 |
 | 键盘扩展网络 API | 源码级检查通过 | `scripts/check_privacy.sh` |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
-| XCTest 测试方法执行 | 20/20 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
+| 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、候选 3 个 |
+| XCTest 测试方法执行 | 24/24 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
 > 92 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。

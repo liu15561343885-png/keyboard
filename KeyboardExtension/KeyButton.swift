@@ -1,3 +1,4 @@
+import PrivateKeyboardCore
 import UIKit
 
 final class KeyButton: UIControl {
