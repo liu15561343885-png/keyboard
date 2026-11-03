@@ -14,6 +14,10 @@ final class UserAndScoringTests: XCTestCase {
         store.recordSelection(of: "你好")
         XCTAssertEqual(store.count(for: "你好"), 1)
         XCTAssertGreaterThan(store.recencyScore(for: "你好"), 0)
+        let backupFlag = try? directory.appendingPathComponent("user-history.json")
+            .resourceValues(forKeys: [.isExcludedFromBackupKey])
+            .isExcludedFromBackup
+        XCTAssertEqual(backupFlag ?? nil, true)
 
         let reloaded = UserHistoryStore(containerURL: directory)
         XCTAssertEqual(reloaded.count(for: "你好"), 1)

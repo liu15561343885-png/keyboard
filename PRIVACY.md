@@ -33,7 +33,7 @@ PrivateKeyboard 的目标是：**输入内容、按键、上下文和个人词�
 | 只读词库/模型 | Extension bundle + App Group 数据目录 | 输入与排序 | 随 App/版本删除 |
 | 更新版本指针 | App Group `PrivateKeyboardDatasets/current.json` | 选择版本/回滚 | 随 App 删除 |
 
-不保存完整输入历史，不把上下文写盘，不记录按键日志。
+不保存完整输入历史，不把上下文写盘，不记录按键日志。`user-history.json`、数据集指针和数据集目录会设置 `isExcludedFromBackup`，避免被 iCloud/iTunes 备份静默带走；该设置是尽力而为，不替代系统级设备加密。
 
 ## 没有做什么
 

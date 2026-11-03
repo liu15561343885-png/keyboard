@@ -141,6 +141,7 @@ public final class UserHistoryStore {
             encoder.outputFormatting = [.sortedKeys]
             let data = try encoder.encode(value)
             try data.write(to: fileURL, options: [.atomic])
+            BackupExclusion.exclude(fileURL)
         } catch {
             // A failed write must never break typing. The in-memory values stay
             // valid for this session and the next successful write retries.

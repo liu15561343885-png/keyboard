@@ -65,6 +65,18 @@ public enum SemanticVersion {
     }
 }
 
+public enum BackupExclusion {
+    /// Best-effort exclusion from iCloud/iTunes backups for local-only data.
+    /// This is not a substitute for iOS Data Protection, but it ensures that
+    /// personal frequencies and downloaded datasets are not silently backed up.
+    public static func exclude(_ url: URL) {
+        var mutableURL = url
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? mutableURL.setResourceValues(values)
+    }
+}
+
 public enum SharedConstants {
     /// Replace this value together with both entitlements and the bundle IDs in
     /// `project.yml` before shipping. The extension never opens a network

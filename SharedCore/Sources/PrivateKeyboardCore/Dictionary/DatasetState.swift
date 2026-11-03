@@ -59,6 +59,8 @@ public struct DatasetStateStore {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(state)
         try data.write(to: stateURL, options: [.atomic])
+        BackupExclusion.exclude(rootURL)
+        BackupExclusion.exclude(stateURL)
     }
 }
 

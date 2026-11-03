@@ -237,7 +237,7 @@ swift run core-check Resources/Generated
 - 不上传按键、正在输入的文本、上下文、个人词频；
 - 不接入广告、统计或崩溃上报 SDK；
 - 键盘扩展不链接 Updater/网络模块；
-- 用户词频只保存在 App Group；
+- 用户词频只保存在 App Group，并设置不进入 iCloud/iTunes 备份；
 - 设置中可清除；
 - 无需“允许完全访问”；
 - 更新只由主 App 发起，且只下载公开词库/模型/许可证，不包含用户数据。
