@@ -195,7 +195,7 @@ struct KeyboardAppearanceView: View {
                 appearanceSlider("背景浓度", value: binding(\.backgroundOpacity), range: 0.2...1, format: "%.2f")
             }
             Section {
-                appearanceSlider("键盘高度", value: binding(\.keyboardHeight), range: 240...400, format: "%.0f pt")
+                appearanceSlider("键盘高度", value: binding(\.keyboardHeight), range: 240...340, format: "%.0f pt")
                 appearanceSlider("左右内缩", value: binding(\.keyboardHorizontalInset), range: 0...24, format: "%.0f pt")
                 Button("恢复默认外观") { model.resetAppearance() }
             } header: {

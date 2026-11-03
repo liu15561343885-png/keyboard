@@ -12,9 +12,7 @@ private enum SettingsPasteboard {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         let board = UIPasteboard(name: name, create: true)
         board?.setData(data, forPasteboardType: type)
-        // General pasteboard is the fallback when the named pasteboard is
-        // unavailable to a free-signing keyboard extension.
-        UIPasteboard.general.setData(data, forPasteboardType: type)
+
     }
 }
 

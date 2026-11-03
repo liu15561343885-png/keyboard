@@ -20,8 +20,7 @@ private enum SettingsPasteboard {
 
     static func read() -> KeyboardSettings? {
         let named = UIPasteboard(name: name, create: true)?.data(forPasteboardType: type)
-        let general = UIPasteboard.general.data(forPasteboardType: type)
-        guard let data = named ?? general else { return nil }
+        guard let data = named else { return nil }
         return try? JSONDecoder().decode(KeyboardSettings.self, from: data)
     }
 }

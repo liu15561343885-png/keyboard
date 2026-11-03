@@ -29,7 +29,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         keyCornerRadius: Double = 8,
         keyOpacity: Double = 0.98,
         keyBorderOpacity: Double = 0,
-        keyboardHeight: Double = 344,
+        keyboardHeight: Double = 288,
         keyboardHorizontalInset: Double = 0,
         keySpacing: Double = 0,
         keyHitExpansion: Double = 2,
@@ -75,7 +75,7 @@ public struct KeyboardSettings: Codable, Equatable, Sendable {
         self.keyCornerRadius = try container.decodeIfPresent(Double.self, forKey: .keyCornerRadius) ?? 8
         self.keyOpacity = try container.decodeIfPresent(Double.self, forKey: .keyOpacity) ?? 0.98
         self.keyBorderOpacity = try container.decodeIfPresent(Double.self, forKey: .keyBorderOpacity) ?? 0
-        self.keyboardHeight = try container.decodeIfPresent(Double.self, forKey: .keyboardHeight) ?? 344
+        self.keyboardHeight = try container.decodeIfPresent(Double.self, forKey: .keyboardHeight) ?? 288
         self.keyboardHorizontalInset = try container.decodeIfPresent(Double.self, forKey: .keyboardHorizontalInset) ?? 0
         self.keySpacing = try container.decodeIfPresent(Double.self, forKey: .keySpacing) ?? 0
         self.keyHitExpansion = try container.decodeIfPresent(Double.self, forKey: .keyHitExpansion) ?? 2
