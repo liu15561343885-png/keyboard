@@ -98,7 +98,7 @@ final class KeyButton: UIControl {
         case .function:
             return KeyboardTheme.functionKey
         case .accent:
-            return KeyboardTheme.accent
+            return KeyboardTheme.functionKey
         }
     }
 
@@ -136,7 +136,7 @@ final class KeyButton: UIControl {
             label.textColor = KeyboardTheme.keyText
             label.font = KeyboardTheme.functionFont
         case .accent:
-            label.textColor = .white
+            label.textColor = KeyboardTheme.keyText
             label.font = KeyboardTheme.functionFont
         }
     }
