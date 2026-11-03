@@ -30,7 +30,7 @@ CC-CEDICT 下载文件（gzip）SHA-256：`e203bbf4a28c2ab54762e9b1fb813e53aa911
 2. 词条按 `simplified + traditional + pinyinKey` 去重；
 3. 英文释义取前两条，附 POS 启发式标签；
 4. 使用 wordfreq 中文频率（概率 × 1e9 转为正整数排序权重）；
-5. 人工覆盖 `我爱你/我比你/卧病/点赞/热搜/短视频/表情包/种草/打卡/输入法/词库/隐私/本地/离线/端到端` 等条目；
+5. 人工覆盖 `我爱你/我比你/卧病/点赞/热搜/短视频/表情包/种草/打卡/输入法/词库/隐私/本地/离线/端到端` 等条目，并加入一组人工复核的互联网词汇（弹幕/破防/内卷/躺平/情绪价值/打工人/社恐/显眼包/搭子/元宇宙/大模型/带货/探店/破圈/多巴胺等）；这些是策划词表，不是实时热榜抓取；
 6. Tatoeba 句子用 jieba 分词，过滤非中文 token，统计 bigram/trigram，取最高频各 20,000 条；
 7. 构建为 `pinyin.bin`、`dictionary.zh-en.bin`、`dictionary.en-zh.bin`、`lm.bigram.bin`、`lm.trigram.bin`；
 8. 训练 9 维 Core ML 微型线性排序器 `candidate_scorer.mlmodel`；

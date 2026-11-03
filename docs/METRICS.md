@@ -12,7 +12,7 @@
 | 系统 | macOS 15.6 (24G84) |
 | Swift | 6.1.2 (swiftlang-6.1.2.1.2) |
 | 构建 | `swift run -c release core-check Resources/Generated` |
-| 数据 | 内置 `2026.11.1`：123,581 词条、464,188 英中释义、467 音节、20,000 bigram、20,000 trigram |
+| 数据 | 内置 `2026.11.1`：123,586 词条、464,222 英中释义、467 音节、20,000 bigram、20,000 trigram |
 | 模型 | Core ML `micro-linear-1`，CPU，9 维输入 |
 | 日期 | 2026-11-03 |
 

@@ -1,5 +1,5 @@
 {
-  "builtAt" : "2026-11-03T06:20:02Z",
+  "builtAt" : "2026-11-03T06:36:50Z",
   "dataVersion" : "2026.11.1",
   "files" : [
     {
@@ -7,7 +7,7 @@
       "kind" : "pinyin",
       "modelVersion" : "",
       "name" : "pinyin.bin",
-      "sha256" : "3585f4d94822a148968e4759d860931f26a1466a0e758d75dfa3670008aefe8e",
+      "sha256" : "4f58f0e8b0e6d3583443bd4c9d2ac81bfab0c311ddff7ff15cd54c388073b84b",
       "size" : 5719,
       "url" : "https://example.invalid/releases/pinyin.bin"
     },
@@ -16,8 +16,8 @@
       "kind" : "zh-en",
       "modelVersion" : "",
       "name" : "dictionary.zh-en.bin",
-      "sha256" : "df2b8a1ca582cdfe9f480adad6cc85058370e37edd33b4e409d3bdcb820eb8f2",
-      "size" : 14577416,
+      "sha256" : "6baf8d1e890d99d289a8621e4d7f3be279ebf25d96a3446cefb66d3a72e4746a",
+      "size" : 14577360,
       "url" : "https://example.invalid/releases/dictionary.zh-en.bin"
     },
     {
@@ -25,8 +25,8 @@
       "kind" : "en-zh",
       "modelVersion" : "",
       "name" : "dictionary.en-zh.bin",
-      "sha256" : "ed2f1fcf1be0f7311753cf406f6c55ea7a8507c153e1fe05a4101df3828f7b3b",
-      "size" : 17753478,
+      "sha256" : "ea81ee8aa884476661eca5fb6f9c59b245718fac71417b10406cb5291f5efee7",
+      "size" : 17754098,
       "url" : "https://example.invalid/releases/dictionary.en-zh.bin"
     },
     {
@@ -60,7 +60,7 @@
   "minAppVersion" : "1.0.0",
   "minOSVersion" : "17.0",
   "schemaVersion" : 1,
-  "signature" : "BdVEUKcE2peHq/q2PUWVydC//wOeucL5yOe+IRZ2tiodDvF1igIzeQd4fk6qsG2KH7e16gpcSeDC8udSCQtNBg==",
+  "signature" : "qfSrrFKzRQglO+QMbu43KdT2wJJUxXSv7X8GIQLQRQoSZSwt5Yi2WbakULxtQdvEtxOH3koUT2RTRSKgFybQAg==",
   "source" : {
     "attribution" : "CC-CEDICT by MDBG; frequency data derived from wordfreq by Robyn Speer; n-gram counts derived from Tatoeba contributors; jieba by fxsjy. See THIRD_PARTY_LICENSES.md.",
     "license" : "CC BY-SA 4.0 (CC-CEDICT, wordfreq); CC BY 2.0 FR (Tatoeba n-grams); MIT (jieba)",
