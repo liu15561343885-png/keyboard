@@ -23,6 +23,7 @@ final class KeyboardView: UIView {
     private var returnKeyLabel = "换行"
     private var nineKey = false
     private var nineGrid: UIView?
+    private var nineCells: [(KeyButton, NineKeyCell)] = []
     private var deleteTimer: Timer?
     private var lastLongPressDeleteEnd: TimeInterval = 0
     private var lastCursorMoveEnd: TimeInterval = 0
@@ -196,6 +197,7 @@ final class KeyboardView: UIView {
         deleteTimer = nil
         nineGrid?.removeFromSuperview()
         nineGrid = nil
+        nineCells.removeAll()
         for view in rowsStack.arrangedSubviews {
             rowsStack.removeArrangedSubview(view)
             view.removeFromSuperview()
@@ -253,6 +255,7 @@ final class KeyboardView: UIView {
         grid.translatesAutoresizingMaskIntoConstraints = false
         insertSubview(grid, belowSubview: candidatePanel)
         nineGrid = grid
+        nineCells.removeAll()
         NSLayoutConstraint.activate([
             grid.leadingAnchor.constraint(equalTo: leadingAnchor, constant: KeyboardTheme.horizontalMargin),
             grid.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -KeyboardTheme.horizontalMargin),
@@ -260,47 +263,13 @@ final class KeyboardView: UIView {
             grid.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -56)
         ])
 
-        var columns: [UILayoutGuide] = []
-        for _ in 0..<5 {
-            let guide = UILayoutGuide()
-            grid.addLayoutGuide(guide)
-            columns.append(guide)
-        }
-        var rows: [UILayoutGuide] = []
-        for _ in 0..<4 {
-            let guide = UILayoutGuide()
-            grid.addLayoutGuide(guide)
-            rows.append(guide)
-        }
-        columns[0].leadingAnchor.constraint(equalTo: grid.leadingAnchor).isActive = true
-        rows[0].topAnchor.constraint(equalTo: grid.topAnchor).isActive = true
-        for index in 0..<columns.count {
-            columns[index].widthAnchor.constraint(equalTo: grid.widthAnchor, multiplier: 0.2).isActive = true
-            if index > 0 {
-                columns[index].leadingAnchor.constraint(equalTo: columns[index - 1].trailingAnchor).isActive = true
-            }
-        }
-        for index in 0..<rows.count {
-            rows[index].heightAnchor.constraint(equalTo: grid.heightAnchor, multiplier: 0.25).isActive = true
-            if index > 0 {
-                rows[index].topAnchor.constraint(equalTo: rows[index - 1].bottomAnchor).isActive = true
-            }
-        }
-        columns.last?.trailingAnchor.constraint(equalTo: grid.trailingAnchor).isActive = true
-        rows.last?.bottomAnchor.constraint(equalTo: grid.bottomAnchor).isActive = true
-
         for cell in KeyboardLayout.nineKeyGrid(returnKeyLabel: returnKeyLabel) {
             let button = KeyButton(spec: cell.spec)
             button.onPress = { [weak self] in self?.onFeedback?(cell.spec.action) }
-            let variants = Self.punctuationVariants[cell.spec.label] ?? []
-            button.variants = variants
-            let event: UIControl.Event = (cell.spec.action == .space || !variants.isEmpty) ? .touchUpInside : .touchDown
+            button.translatesAutoresizingMaskIntoConstraints = true
+            button.autoresizingMask = []
+            let event: UIControl.Event = cell.spec.action == .space ? .touchUpInside : .touchDown
             button.addTarget(self, action: #selector(keyTapped(_:)), for: event)
-            if !variants.isEmpty {
-                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(punctuationLongPressed(_:)))
-                longPress.minimumPressDuration = 0.35
-                button.addGestureRecognizer(longPress)
-            }
             if cell.spec.action == .backspace {
                 let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
                 longPress.minimumPressDuration = 0.45
@@ -311,30 +280,22 @@ final class KeyboardView: UIView {
                 button.addGestureRecognizer(longPress)
             }
             grid.addSubview(button)
-            let lastColumn = min(columns.count - 1, cell.column + cell.columnSpan - 1)
-            let lastRow = min(rows.count - 1, cell.row + cell.rowSpan - 1)
-            NSLayoutConstraint.activate([
-                button.leadingAnchor.constraint(equalTo: columns[cell.column].leadingAnchor),
-                button.trailingAnchor.constraint(equalTo: columns[lastColumn].trailingAnchor),
-                button.topAnchor.constraint(equalTo: rows[cell.row].topAnchor),
-                button.bottomAnchor.constraint(equalTo: rows[lastRow].bottomAnchor)
-            ])
+            nineCells.append((button, cell))
         }
     }
 
-    private static let punctuationVariants: [String: [String]] = [
-        "，": ["，", "、", "。", "？", "！", "；", "："],
-        "。": ["。", "，", "、", "？", "！", "…"],
-        "？": ["？", "！", "，", "。"],
-        "！": ["！", "？", "，", "。"],
-        "-": ["-", "—", "–", "_"],
-        ".": [".", "…", "。", "·"],
-        ",": [",", "，", "、", "；"]
-    ]
-
-    @objc private func punctuationLongPressed(_ gesture: UILongPressGestureRecognizer) {
-        guard gesture.state == .began, let button = gesture.view as? KeyButton, !button.variants.isEmpty else { return }
-        onPunctuationLongPress?(button.variants)
+    private func layoutNineKeyGrid() {
+        guard let grid = nineGrid, !nineCells.isEmpty else { return }
+        let columnWidth = grid.bounds.width / 5
+        let rowHeight = grid.bounds.height / 4
+        for (button, cell) in nineCells {
+            button.frame = CGRect(
+                x: CGFloat(cell.column) * columnWidth,
+                y: CGFloat(cell.row) * rowHeight,
+                width: CGFloat(cell.columnSpan) * columnWidth,
+                height: CGFloat(cell.rowSpan) * rowHeight
+            )
+        }
     }
 
     @objc private func keyTapped(_ sender: KeyButton) {
