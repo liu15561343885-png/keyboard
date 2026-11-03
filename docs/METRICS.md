@@ -2,7 +2,7 @@
 
 > **结论先行：当前只能证明核心库在 macOS 上可运行，不能证明“可日常使用”。**
 >
-> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，30 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
+> UIKit/SwiftUI 代码已通过 Mac Catalyst SDK 类型检查，31 个 XCTest 测试方法已在本地 XCTest 兼容 shim 中执行通过；但 iOS SDK 构建、真机启动、键盘扩展峰值内存、长期稳定性仍未验证。未测项不会用“应该”填成通过。
 
 ## 测量环境
 
@@ -46,7 +46,7 @@
 | 数据/配置一致性 | 通过 | `scripts/check_artifacts.py`：哈希、版本、App Group、公钥、manifest 示例 |
 | UIKit/SwiftUI 类型检查 | 通过 | `scripts/typecheck_catalyst.sh`，Mac Catalyst SDK，非 iOS SDK 构建 |
 | 键盘视图构建/布局 | 通过 | `scripts/smoke_keyboard_catalyst.sh`：字母页 34 控件、数字页 32、Emoji 页 37、候选 3 个、候选栏 56 pt、深色模式颜色解析、按键/候选点击回调、KeyboardViewController 实例化（288 pt / 34 键） |
-| XCTest 测试方法执行 | 30/30 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
+| XCTest 测试方法执行 | 31/31 通过 | 本地 XCTest 兼容 shim；标准 `swift test` 需 Xcode |
 | 断网逻辑可用性 | 未做设备断网测试 | 扩展不链接网络模块，但需真机验证 |
 
 > 98 条查询仍是开发者自选，不能代表真实输入分布。Top-1 100% **不是**通用准确率。

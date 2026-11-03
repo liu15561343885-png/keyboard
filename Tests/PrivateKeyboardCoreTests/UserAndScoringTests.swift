@@ -82,6 +82,18 @@ final class UserAndScoringTests: XCTestCase {
         XCTAssertTrue(scorer.identifier.contains("fallback"))
     }
 
+    func testInvalidCoreMLModelFallsBackToWeightedScorer() throws {
+        let built = try TestDataset.make()
+        defer { built.remove() }
+        let modelURL = built.directory.appendingPathComponent("candidate_scorer.mlmodel")
+        try Data("not-a-coreml-model".utf8).write(to: modelURL)
+        let history = UserHistoryStore(containerURL: built.directory)
+        let engine = try PredictionEngine(paths: built.paths, userHistory: history, fuzzyOptions: .common)
+        XCTAssertTrue(engine.modelStatusDescription.contains("Core ML 不可用"))
+        let candidates = try engine.predict(input: "nihao", language: .chinese, contextWords: [], limit: 5)
+        XCTAssertEqual(candidates.first?.text, "你好")
+    }
+
     func testManifestSignatureRejectsTampering() throws {
         let built = try TestDataset.make()
         defer { built.remove() }
