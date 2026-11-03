@@ -10,6 +10,8 @@ final class KeyboardView: UIView {
     private var currentPage: KeyboardPage = .letters
     private var currentLanguage: InputLanguage = .chinese
     private var isShifted = false
+    private var deleteTimer: Timer?
+    private var lastLongPressDeleteEnd: TimeInterval = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -58,7 +60,13 @@ final class KeyboardView: UIView {
         rebuildKeys()
     }
 
+    deinit {
+        deleteTimer?.invalidate()
+    }
+
     private func rebuildKeys() {
+        deleteTimer?.invalidate()
+        deleteTimer = nil
         for view in rowsStack.arrangedSubviews {
             rowsStack.removeArrangedSubview(view)
             view.removeFromSuperview()
@@ -76,6 +84,11 @@ final class KeyboardView: UIView {
                 let button = KeyButton(spec: spec)
                 button.onPress = { [weak self] in self?.onFeedback?() }
                 button.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
+                if spec.action == .backspace {
+                    let longPress = UILongPressGestureRecognizer(target: self, action: #selector(deleteLongPressed(_:)))
+                    longPress.minimumPressDuration = 0.45
+                    button.addGestureRecognizer(longPress)
+                }
                 row.addArrangedSubview(button)
             }
             rowsStack.addArrangedSubview(row)
@@ -83,6 +96,31 @@ final class KeyboardView: UIView {
     }
 
     @objc private func keyTapped(_ sender: KeyButton) {
+        if sender.action == .backspace,
+           Date().timeIntervalSinceReferenceDate - lastLongPressDeleteEnd < 0.15 {
+            return
+        }
         onAction?(sender.action)
+    }
+
+    @objc private func deleteLongPressed(_ recognizer: UILongPressGestureRecognizer) {
+        switch recognizer.state {
+        case .began:
+            onAction?(.backspace)
+            onFeedback?()
+            deleteTimer?.invalidate()
+            let timer = Timer(timeInterval: 0.09, repeats: true) { [weak self] _ in
+                self?.onAction?(.backspace)
+                self?.onFeedback?()
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            deleteTimer = timer
+        case .ended, .cancelled, .failed:
+            deleteTimer?.invalidate()
+            deleteTimer = nil
+            lastLongPressDeleteEnd = Date().timeIntervalSinceReferenceDate
+        default:
+            break
+        }
     }
 }

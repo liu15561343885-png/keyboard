@@ -43,6 +43,10 @@ if let q = keyButton(withLabel: "q") {
     _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: q)
 }
 precondition(observedActions == [.character("q")], "q tap did not emit character action")
+let deleteKey = keyButton(withLabel: "⌫")
+precondition(deleteKey != nil, "delete key not found")
+precondition(deleteKey?.gestureRecognizers?.contains { $0 is UILongPressGestureRecognizer } == true, "delete long-press recognizer missing")
+print("delete long-press recognizer: present")
 precondition(keyButton(withLabel: "123") != nil, "123 key not found")
 if let pageKey = keyButton(withLabel: "123") {
     _ = keyboard.perform(NSSelectorFromString("keyTapped:"), with: pageKey)
