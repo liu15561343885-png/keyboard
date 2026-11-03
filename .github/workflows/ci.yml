@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   core-and-ios:
     runs-on: macos-15
@@ -44,6 +47,7 @@ jobs:
 
       - name: Build iOS app and keyboard extension
         run: |
+          set -o pipefail
           xcodebuild \
             -project PrivateKeyboard.xcodeproj \
             -scheme PrivateKeyboard \
@@ -52,10 +56,11 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath /tmp/PrivateKeyboardDerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee /tmp/xcodebuild.log
 
       - name: Run Xcode unit tests
         run: |
+          set -o pipefail
           xcodebuild \
             -project PrivateKeyboard.xcodeproj \
             -scheme PrivateKeyboard \
@@ -63,7 +68,7 @@ jobs:
             -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
             -derivedDataPath /tmp/PrivateKeyboardDerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            test 2>&1 | tee -a /tmp/xcodebuild.log
 
       - name: Verify extension does not link the updater product
         run: |
@@ -77,3 +82,27 @@ jobs:
           else
             echo "::warning::extension binary not found for symbol check"
           fi
+
+      - name: Publish CI failure diagnostics
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ ! -s /tmp/xcodebuild.log ]; then
+            echo "no xcodebuild log to publish"
+            exit 0
+          fi
+          tail -n 20000 /tmp/xcodebuild.log > /tmp/ci-xcodebuild.log
+          rm -rf /tmp/ci-diagnostics
+          mkdir -p /tmp/ci-diagnostics
+          cd /tmp/ci-diagnostics
+          git init -q
+          git config user.name "PrivateKeyboard CI"
+          git config user.email "ci@privatekeyboard.local"
+          cp /tmp/ci-xcodebuild.log xcodebuild.log
+          git add xcodebuild.log
+          git commit -q -m "CI diagnostics for ${GITHUB_SHA}"
+          git branch -M ci-diagnostics
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin HEAD:ci-diagnostics
