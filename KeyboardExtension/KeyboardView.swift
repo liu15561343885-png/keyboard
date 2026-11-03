@@ -118,6 +118,22 @@ final class KeyboardView: UIView {
         rebuildKeys()
     }
 
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if let grid = nineGrid {
+            let top = candidateBar.frame.maxY
+            let bottom = bounds.height - 56
+            grid.frame = CGRect(
+                x: KeyboardTheme.horizontalMargin,
+                y: top,
+                width: max(0, bounds.width - KeyboardTheme.horizontalMargin * 2),
+                height: max(0, bottom - top)
+            )
+            layoutNineKeyGrid()
+        }
+    }
+
     func update(candidates: [InputCandidate]) {
         candidateBar.update(candidates: candidates)
         candidatePanel.update(candidates: candidates)
