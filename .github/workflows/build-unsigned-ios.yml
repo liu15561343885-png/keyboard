@@ -1,0 +1,49 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      MSIME_IOS_OMIT_ON_DEMAND: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          set -euo pipefail
+          brew install xcodegen cocoapods
+          bash scripts/rustup-install.sh aarch64-apple-ios
+      - name: Prepare locked resources
+        run: |
+          set -euo pipefail
+          mkdir -p target/resources
+          resource_dir="$(cargo run --quiet -p msime-client-core --example install_resources -- target/resources)"
+          echo "RESOURCE_DIR=$resource_dir" >> "$GITHUB_ENV"
+      - name: Build MSIMEApp for device without signing
+        run: |
+          set -euo pipefail
+          bash platforms/ios/build-app.sh "$RESOURCE_DIR" device
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          app="target/ios/derived-device/Build/Products/Release-iphoneos/MSIMEApp.app"
+          test -d "$app"
+          rm -rf dist/Payload
+          mkdir -p dist/Payload
+          cp -R "$app" dist/Payload/
+          (cd dist && zip -qry MSIMEApp-unsigned.ipa Payload)
+          shasum -a 256 dist/MSIMEApp-unsigned.ipa | tee dist/SHA256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MSIMEApp-unsigned-ipa
+          path: |
+            dist/MSIMEApp-unsigned.ipa
+            dist/SHA256
+          if-no-files-found: error
