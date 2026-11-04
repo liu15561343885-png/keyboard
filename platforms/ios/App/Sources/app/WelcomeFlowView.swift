@@ -17,7 +17,7 @@ struct WelcomeFlowView: View {
   @State private var signedIn = false
   @State private var showsLogin = false
 
-  private static let pageCount = 4
+  private static let pageCount = 3
 
   private struct Step {
     let symbol: String
@@ -33,8 +33,6 @@ struct WelcomeFlowView: View {
          body: WelcomeFlowView.schemeStepBody),
     Step(symbol: "translate", kicker: "第三步 · 水杉的特点", title: "候选下方就是译文",
          body: "每个候选词下面那行小字是英文释义，本地词库优先，没命中时才联网查询。"),
-    Step(symbol: "arrow.triangle.2.circlepath.circle.fill", kicker: "最后一步", title: "登录后多端同步",
-         body: "登录后词库、自造词、皮肤和云剪贴板会在手机、平板和电脑之间同步。"),
   ]
 
   var body: some View {
@@ -58,11 +56,7 @@ struct WelcomeFlowView: View {
       .accessibilityAction(named: "上一步") { if page > 0 { page -= 1 } }
     }
     .tint(MetasequoiaTheme.accent)
-    .task {
-      prepareResources()
-      await refreshSignIn()
-    }
-    .sheet(isPresented: $showsLogin, onDismiss: { Task { await refreshSignIn() } }) { AccountLoginSheet() }
+    .task { prepareResources() }
   }
 
   private var topBar: some View {
@@ -230,17 +224,8 @@ struct WelcomeFlowView: View {
       .accessibilityLabel("第 \(page + 1) 步，共 \(Self.pageCount) 步")
       if page < Self.pageCount - 1 {
         primaryButton("下一步", identifier: "nextOnboardingButton") { page += 1 }
-      } else if signedIn {
-        primaryButton("开始使用", identifier: "finishOnboardingButton") { finish() }
       } else {
-        primaryButton("登录", identifier: "onboardingSignInButton") { showsLogin = true }
-        // The whole row answers the tap, not only the two words drawn in it.
-        Button { finish() } label: {
-          Text("稍后再说").font(.system(size: 15)).foregroundStyle(MetasequoiaTheme.accent)
-            .frame(maxWidth: .infinity).frame(height: 36).contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("finishOnboardingButton")
+        primaryButton("开始使用", identifier: "finishOnboardingButton") { finish() }
       }
     }
     .frame(maxWidth: 560)

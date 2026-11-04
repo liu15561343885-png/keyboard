@@ -5482,9 +5482,10 @@ final class KeyboardViewController: UIInputViewController, UIGestureRecognizerDe
 
   /// 读本机的工具栏设置；工具栏和顶栏在下一次 `updateShortcutButtons` 和 `renderCandidateStrip` 时跟着更新。
   private func readToolbarPreferences() {
-    toolbarPhrases = TouchToolbarLocalPreference.phrases
-    toolbarScheme = TouchToolbarLocalPreference.scheme
-    toolbarHidden = TouchToolbarLocalPreference.hidden
+    // Native-slim fork: no brand/tool strip above the candidate bar.
+    toolbarPhrases = false
+    toolbarScheme = false
+    toolbarHidden = true
   }
 
   /// 释义行数、候选和编码字号以及「候选栏大小」都决定顶栏有多高，所以在这里一起应用。
@@ -10202,14 +10203,10 @@ final class KeyboardViewController: UIInputViewController, UIGestureRecognizerDe
 
   /// 按键音按 `KeySoundPackPolicy.playback` 出声：有完全访问、选中的包已经加载好时播包里这一类按键的样本，密码框里一律播普通键的；否则退回系统按键声。
   private func playInputClick(_ keyClass: KeySoundClass = .standard) {
-    // 普通键在密码框里外都播同一个样本，只有空格、回车和退格才需要问一下输入框。
-    let playback = KeySoundPackPolicy.playback(
-      soundEnabled: KeyboardFeedbackPreference.soundEnabled, wanted: wantedKeySoundPack, loaded: keySounds.loaded,
-      keyClass: keyClass, secure: keyClass != .standard && isCredentialField)
-    switch playback {
-    case .silent: break
-    case .system: UIDevice.current.playInputClick()
-    case .sample(let file): if !keySounds.play(file, gain: keySoundGain) { UIDevice.current.playInputClick() }
+    // This fork intentionally uses the system keyboard click for every key.
+    // Third-party sound packs are not loaded, so feedback matches the native keyboard.
+    if KeyboardFeedbackPreference.soundEnabled {
+      UIDevice.current.playInputClick()
     }
     if hapticsEnabled {
       hapticStrength.impact(keyFeedback)

@@ -306,12 +306,7 @@ private struct MainTabView: View {
           navigation.select(.settings, router: router)
         }.frame(width: 0, height: 0))
         .tabItem { Label("首页", systemImage: "house.fill") }.tag(AppNavigation.Tab.settings)
-      NavigationStack { CommunityHomeView() }.id(navigation.communityRoot)
-        .tabItem { Label("社区", systemImage: "globe.asia.australia.fill") }.tag(AppNavigation.Tab.community)
-      TypingStatisticsView()
-        .tabItem { Label("统计", systemImage: "chart.bar.fill") }.tag(AppNavigation.Tab.statistics)
-      NavigationStack { AccountSettingsView() }
-        .tabItem { Label("我的", systemImage: "person.fill") }.tag(AppNavigation.Tab.account)
+
     }
     .environmentObject(navigation)
     .environmentObject(router)

@@ -16,10 +16,8 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
   /// 根页面的各分组，对应 Android 的 `KeyboardFragment.buildRows`。移动端设计稿去掉了 键盘，但它仍留在根页面，因为布局、高度、反馈、候选栏 和 键盘工具栏 都在那里；后两个页面从 键盘 和搜索进入，不从根页面进入。
   static let groups: [[SettingsPage]] = [
-    [.skin, .layout],
-    [.input, .ai, .dictionary, .plugins],
-    [.voice, .handwriting],
-    [.developer],
+    [.layout, .input],
+    [.candidate, .ai, .dictionary],
   ]
 
   var title: String {

@@ -92,8 +92,9 @@ struct KeyboardTheme: Equatable {
 
   /// `document` 里所选的主题，没有文档时取 App Group 里的。给了 `dark` 时按那种明暗取实际生效的主题（`GlobalThemeCatalog.effectiveId`）：所选主题属于另一种明暗时是跟随系统。
   static func resolve(document: [String: Any]?, dark: Bool? = nil) -> KeyboardTheme {
-    let selected = document == nil ? GlobalThemePreference.selected : GlobalThemePreference.theme(in: document)
-    return resolve(dark.map { GlobalThemeCatalog.effectiveId(selected, dark: $0) } ?? selected, document: document)
+    // Native-slim fork: ignore skins/global themes and draw the system keyboard tokens.
+    let selected = GlobalThemeCatalog.nativeId
+    return resolve(selected, document: document)
   }
 
   private static let lock = NSLock()
