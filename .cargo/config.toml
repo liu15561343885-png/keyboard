@@ -1,0 +1,18 @@
+# Tauri 的 iOS cdylib 先于 Swift 宿主链接；只延后解析这四个由宿主导出的桥接符号。
+# 静态库在 Xcode 最终链接时仍必须找到真实实现，其余未定义符号继续报错。
+# 使用逐符号的 -U，避免 iOS 已弃用的全局 -undefined dynamic_lookup。
+[target.aarch64-apple-ios]
+rustflags = [
+  "-C", "link-arg=-Wl,-U,_msime_ios_personal_dictionary_request",
+  "-C", "link-arg=-Wl,-U,_msime_ios_personal_dictionary_string_free",
+  "-C", "link-arg=-Wl,-U,_msime_ios_dictionary_snapshot_request",
+  "-C", "link-arg=-Wl,-U,_msime_ios_dictionary_snapshot_string_free"
+]
+
+[target.aarch64-apple-ios-sim]
+rustflags = [
+  "-C", "link-arg=-Wl,-U,_msime_ios_personal_dictionary_request",
+  "-C", "link-arg=-Wl,-U,_msime_ios_personal_dictionary_string_free",
+  "-C", "link-arg=-Wl,-U,_msime_ios_dictionary_snapshot_request",
+  "-C", "link-arg=-Wl,-U,_msime_ios_dictionary_snapshot_string_free"
+]

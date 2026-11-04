@@ -1,0 +1,134 @@
+#include "../../EngineSessionAdapter.h"
+#include "../../../../../shared/input/CompositionDisplay.h"
+#include <nlohmann/json.hpp>
+
+#include <cstdlib>
+
+using msime::tsf::EngineResult;
+using msime::tsf::EngineSessionAdapter;
+
+int main() {
+  EngineResult result;
+  std::string error;
+  // 尾段是可选字段；末尾的显式空尾段也有意义，错误元数据只丢定位、不丢正文。
+  for (const auto &suffix : {std::string{}, std::string{"后"}, std::string{"😀e\xcc\x81后"}}) {
+    const auto text = "合成前文" + suffix;
+    nlohmann::json value{{"handled", true}, {"has_commit", true}, {"commit", text},
+                         {"commit_cursor_suffix", suffix}, {"view", nlohmann::json::object()}};
+    const auto parse = [&] {
+      return EngineSessionAdapter::parse_result(nlohmann::json{{"ok", true}, {"value", value}}.dump(),
+                                                 &result, &error);
+    };
+    if (!parse() || result.commit != text || result.commit_cursor_suffix != suffix) return EXIT_FAILURE;
+    for (const auto &bad : {nlohmann::json(nullptr), nlohmann::json(42), nlohmann::json("失配")}) {
+      value["commit_cursor_suffix"] = bad;
+      if (!parse() || !result.has_commit || result.commit != text || result.commit_cursor_suffix)
+        return EXIT_FAILURE;
+    }
+    value["commit_cursor_suffix"] = suffix;
+    value["has_commit"] = false;
+    if (!parse() || result.commit_cursor_suffix) return EXIT_FAILURE;
+    value["has_commit"] = true;
+    value["commit"] = nullptr;
+    value["commit_cursor_suffix"] = "";
+    if (!parse() || result.commit_cursor_suffix) return EXIT_FAILURE;
+    value["commit"] = "";
+    if (!parse() || result.commit_cursor_suffix != std::string{}) return EXIT_FAILURE;
+    value.erase("commit_cursor_suffix");
+    if (!parse() || result.commit_cursor_suffix) return EXIT_FAILURE;
+  }
+  // 引擎给的光标在 preedit 里的位置（View.preedit_caret）；没有这一项或不是非负整数时为空。
+  {
+    const auto parse = [&](const nlohmann::json &view) {
+      return EngineSessionAdapter::parse_result(
+          nlohmann::json{{"ok", true}, {"value", {{"handled", true}, {"view", view}}}}.dump(), &result, &error);
+    };
+    nlohmann::json view{{"preedit", "shi'shi"}, {"editing_text", "uiui"}, {"caret_position", 4}, {"preedit_caret", 7}};
+    if (!parse(view) || result.view.preedit_caret != std::optional<std::size_t>{7}) return EXIT_FAILURE;
+    view.erase("preedit_caret");
+    if (!parse(view) || result.view.preedit_caret) return EXIT_FAILURE;
+    view["preedit_caret"] = -1;
+    if (!parse(view) || result.view.preedit_caret) return EXIT_FAILURE;
+  }
+  const std::string response =
+      R"({"ok":true,"value":{"handled":true,"commit":"你","diagnostic":null,"view":{"preedit":"ni","editing_text":"ni","caret_position":1,"candidates":[{"id":{"generation":7,"index":12},"text":"你","highlighted":true}]}}})";
+  if (!EngineSessionAdapter::parse_result(response, &result, &error) ||
+      !result.handled || !result.has_commit || result.commit != "你" ||
+      result.view.generation != 7 || result.view.caret != 1 || result.view.candidates.size() != 1 ||
+      result.view.candidates[0].text != "你" ||
+      result.view.candidates[0].index != 12 || !result.view.candidates[0].highlighted)
+    return EXIT_FAILURE;
+  // A Japanese composition carries the kana the letters convert to. The composition shows that
+  // rather than the letters, so a parser that dropped it would leave the TIP drawing romaji with
+  // no way to tell.
+  {
+    EngineResult japanese;
+    const std::string kana =
+        R"({"ok":true,"value":{"handled":true,"commit":null,"view":{"preedit":"nihon","editing_text":"nihon","reading":"にほん","caret_position":5}}})";
+    if (!EngineSessionAdapter::parse_result(kana, &japanese, &error) ||
+        japanese.view.reading != "にほん" || japanese.view.editing_text != "nihon")
+      return EXIT_FAILURE;
+    if (!msime::input::composition_shows_reading(japanese.view.reading, japanese.view.caret,
+                                                 japanese.view.editing_text.size()))
+      return EXIT_FAILURE;
+    // Every other scheme leaves it empty, and then the letters are what there is.
+    if (!result.view.reading.empty() ||
+        msime::input::composition_shows_reading(result.view.reading, result.view.caret,
+                                                result.view.editing_text.size()))
+      return EXIT_FAILURE;
+  }
+  // A Korean letter that starts a new syllable carries the finished one as its commit and the new composition in the same view: the reading is the Hangul to draw, the letters stay behind it, and the scheme tells the TIP which rules apply.
+  {
+    EngineResult korean;
+    const std::string syllable =
+        R"({"ok":true,"value":{"handled":true,"commit":"안","diagnostic":null,"view":{"preedit":"ㄴ","editing_text":"s","reading":"ㄴ","caret_position":1,"scheme":4,"candidates":[]}}})";
+    if (!EngineSessionAdapter::parse_result(syllable, &korean, &error) || !korean.handled ||
+        !korean.has_commit || korean.commit != "안" || korean.view.reading != "ㄴ" ||
+        korean.view.editing_text != "s" || korean.view.scheme != 4 || !korean.view.candidates.empty())
+      return EXIT_FAILURE;
+    if (!msime::input::composition_shows_reading(korean.view.reading, korean.view.caret,
+                                                 korean.view.editing_text.size()))
+      return EXIT_FAILURE;
+    // A view without the field is read as quanpin.
+    if (result.view.scheme != 0)
+      return EXIT_FAILURE;
+  }
+  // 上屏后联想的 view 带 prediction=true，没有组字；普通 view 不带这个字段，读作 false。
+  {
+    EngineResult predicted;
+    const std::string selected =
+        R"({"ok":true,"value":{"handled":true,"commit":"吃","diagnostic":null,"view":{"preedit":"","editing_text":"","caret_position":0,"scheme":0,"prediction":true,"generation":12,"candidates":[{"id":{"session":3,"generation":12,"index":0},"text":"饭","highlighted":true}]}}})";
+    if (!EngineSessionAdapter::parse_result(selected, &predicted, &error) || !predicted.view.prediction ||
+        predicted.view.generation != 12 || predicted.view.candidates.size() != 1 ||
+        predicted.view.candidates[0].text != "饭" || !predicted.has_commit || predicted.commit != "吃" ||
+        result.view.prediction)
+      return EXIT_FAILURE;
+  }
+  // A Zhuyin view names the keys that spell its composition, so the TIP keeps them in the composition instead of committing.
+  {
+    EngineResult zhuyin;
+    const std::string spelled =
+        R"({"ok":true,"value":{"handled":true,"commit":null,"diagnostic":null,"view":{"preedit":"你","editing_text":"su3","reading":"","caret_position":3,"scheme":6,"spelling_symbols":"1234567890,./;- ","candidates":[]}}})";
+    if (!EngineSessionAdapter::parse_result(spelled, &zhuyin, &error) || zhuyin.view.scheme != 6 ||
+        zhuyin.view.spelling_symbols != "1234567890,./;- " || !result.view.spelling_symbols.empty())
+      return EXIT_FAILURE;
+  }
+  {
+    EngineResult held;
+    if (!EngineSessionAdapter::parse_result(
+          R"({"ok":true,"value":{"handled":true,"commit":null,"view":{"editing_text":"","preedit":"","phrase_prefix":"合成词"}}})",
+          &held, &error) || held.view.phrase_prefix != "合成词" || !held.view.editing_text.empty())
+      return EXIT_FAILURE;
+  }
+  if (EngineSessionAdapter::parse_result(
+          R"({"ok":false,"error":"redacted"})", &result, &error))
+    return EXIT_FAILURE;
+  if (!EngineSessionAdapter::parse_result(
+        R"({"ok":true,"value":{"session":17,"preedit":"test","editing_text":"test","caret_position":3,"generation":9,"candidates":[]}})",
+        &result, &error) || result.view.caret != 3 || result.view.generation != 9 ||
+      result.view.preedit != "test" || result.view.session != 17 || result.has_commit) return EXIT_FAILURE;
+  if (!EngineSessionAdapter::parse_result(
+        R"({"ok":true,"value":{"handled":true,"commit":null,"diagnostic":null,"view":{"preedit":"","candidates":[]}}})",
+        &result, &error) || result.has_commit || !result.diagnostic.empty()) return EXIT_FAILURE;
+  return EXIT_SUCCESS;
+}

@@ -1,0 +1,45 @@
+# Records the conventions the tree already follows rather than introducing new
+# ones. Eight languages across six platform hosts means an editor guessing from
+# the current file is right often enough to be trusted and wrong often enough to
+# produce a diff nobody intended.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{rs,java,cpp,cc,h,hpp,mm,m,py,cs}]
+indent_size = 4
+
+[*.{ts,tsx,js,jsx,mjs,ets,kt,kts,swift,css,html}]
+indent_size = 2
+
+[*.{json,json5,yml,yaml,toml}]
+indent_size = 2
+
+[*.md]
+indent_size = 2
+# Markdown gives trailing spaces meaning, and the repository writes prose as one
+# long line per paragraph rather than hard-wrapping it.
+trim_trailing_whitespace = false
+
+# Verbatim copies of upstream files. They have to stay byte-identical to diff
+# against the source they came from, so an editor must not normalise them; see
+# packages/ui/UPSTREAM.md.
+[packages/ui/src/upstream/**]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+
+# Tauri scaffolding, rewritten by the generator. Normalising it produces churn
+# on the next regeneration and nothing else. It ships its own .editorconfig for
+# the Android side.
+[apps/desktop/src-tauri/gen/**]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset

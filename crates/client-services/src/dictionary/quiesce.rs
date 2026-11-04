@@ -1,0 +1,983 @@
+//! Dictionary maintenance with the input hosts' sessions released.
+//!
+//! Importing, editing or clearing learned data needs the Engine's exclusive dictionary lock, and every open input session holds it shared. The Linux hosts (IBus, Fcitx5) and the macOS input method are other processes, so on those platforms this writes a lease beside the lock. The hosts check it on their preference timers (Fcitx5 every 250 ms, IBus and macOS every second), finish the composition, close their sessions and open no new ones while it is live; the settings window also tells the macOS input method at once over a distributed notification (the `announce` of [`QuiescedHosts`]), so it lets go without waiting for its timer. The lease holds its own expiry, so a writer that dies mid-import cannot leave input off for longer than that. The file name, the expiry on the first line and the 30 second bound are shared with `platforms/common/DictionaryQuiesceLease.h`. Moving the data directory on Linux holds the same lease for the whole copy (the desktop app's `platform::linux::linux_dictionary_quiesce`).
+//!
+//! More than one process writes the lease: the settings window and the `msime-mcp` server. Each writes a second line naming itself and removes the lease only while that line is still its own, so one writer finishing does not take down a lease another one is still working under. The hosts read only the first line.
+//!
+//! Windows 上输入会话由 Server 进程持有，经辅助管道请求时由它放开（见 [`server`]）。Server 不记是谁请求的，一个写者恢复时可能把会话交还回去，而另一个写者还在工作；后者的下一个请求于是遇到词库忙，再请求一次，和第一次一样重试。Windows 上还有第二类持锁者：每个用着输入法的应用进程里 TIP 自己的宿主会话，Server 管不到，所以 Windows 同时写下同一份租约，TIP 看着它放开（[`server::WindowsRelease`]）。
+
+use std::ffi::OsStr;
+#[cfg(not(unix))]
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+pub const LEASE_NAME: &str = ".msime-dictionary-quiesce";
+/// A persistent advisory lock that serializes lease publishers and removers.
+/// The lease path itself is replaced atomically, but checking its owner and
+/// removing it are otherwise a check-then-remove race across writers.
+pub const LEASE_LOCK_NAME: &str = ".msime-dictionary-quiesce.lock";
+const LEASE_DURATION: Duration = Duration::from_secs(30);
+/// 一个请求执行期间续租约的间隔，取租约时长的三分之一：一次续写失败，租约过期前还有两次机会。
+const RENEW_INTERVAL: Duration = Duration::from_secs(10);
+/// Long enough for the IBus host's one-second timer to come round twice.
+pub const RETRY_BUDGET: Duration = Duration::from_millis(2500);
+pub const RETRY_INTERVAL: Duration = Duration::from_millis(50);
+/// The host API's reason when an input session holds the dictionaries.
+pub const BUSY: &str = "dictionary maintenance busy";
+/// The native lease reader consumes at most 31 bytes. Keep a generous bound
+/// for the owner line while preventing a corrupt lease from causing an
+/// unbounded allocation when a writer is dropped.
+const MAX_LEASE_BYTES: u64 = 4096;
+
+fn reject_symlinked_path_ancestors(path: &Path) -> std::io::Result<()> {
+    msime_path_trust::reject_symlinked_components(path)
+}
+
+#[cfg(any(not(unix), test))]
+fn read_lease(path: &Path) -> Option<String> {
+    #[cfg(unix)]
+    {
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let directory = open_lease_directory(parent).ok()?;
+        read_lease_at(&directory, path.file_name()?).ok()
+    }
+    #[cfg(not(unix))]
+    {
+        reject_symlinked_path_ancestors(path).ok()?;
+        let bytes = crate::bounded_io::read_bounded_file_with(
+            crate::storage::open_private_file(path).ok()?,
+            MAX_LEASE_BYTES,
+            || (),
+            |_| (),
+        )
+        .ok()?;
+        String::from_utf8(bytes).ok()
+    }
+}
+
+#[cfg(unix)]
+fn open_lease_directory(path: &Path) -> std::io::Result<std::fs::File> {
+    reject_symlinked_path_ancestors(path)?;
+    crate::storage::open_private_directory(path)
+}
+
+#[cfg(unix)]
+fn read_lease_at(directory: &std::fs::File, name: &OsStr) -> std::io::Result<String> {
+    let fd = rustix::fs::openat(
+        directory,
+        name,
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC
+            | rustix::fs::OFlags::NONBLOCK,
+        rustix::fs::Mode::empty(),
+    )?;
+    let file = std::fs::File::from(fd);
+    if !file.metadata()?.is_file() || !crate::file_lock::has_single_link(&file)? {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "lease is not a single-link regular file",
+        ));
+    }
+    let bytes = crate::bounded_io::read_bounded_file_with(file, MAX_LEASE_BYTES, || (), |_| ())
+        .map_err(|()| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "lease exceeds its bound")
+        })?;
+    String::from_utf8(bytes)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
+}
+
+#[cfg(unix)]
+fn open_lease_lock_at(directory: &std::fs::File) -> std::io::Result<std::fs::File> {
+    // APFS can briefly report ENOENT to a second openat while another thread
+    // creates this coordination file. Keep the retry bounded; a real missing
+    // parent or an invalid lock still fails promptly.
+    let mut attempts = 0;
+    let fd = loop {
+        match rustix::fs::openat(
+            directory,
+            LEASE_LOCK_NAME,
+            rustix::fs::OFlags::RDWR
+                | rustix::fs::OFlags::CREATE
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::CLOEXEC
+                | rustix::fs::OFlags::NONBLOCK,
+            rustix::fs::Mode::from_raw_mode(0o600),
+        ) {
+            Ok(fd) => break fd,
+            Err(error) if error == rustix::io::Errno::NOENT && attempts < 10 => {
+                attempts += 1;
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Err(error) => return Err(error.into()),
+        }
+    };
+    let file = std::fs::File::from(fd);
+    if !file.metadata()?.is_file() || !crate::file_lock::has_single_link(&file)? {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "lease lock is not a single-link regular file",
+        ));
+    }
+    Ok(file)
+}
+
+#[cfg(any(not(unix), test))]
+fn open_lease_lock(path: &Path) -> std::io::Result<std::fs::File> {
+    let lock = path.with_file_name(LEASE_LOCK_NAME);
+    crate::file_lock::open_private_lock_file(lock)
+}
+
+#[cfg(windows)]
+use server::WindowsRelease as Release;
+/// 宿主在什么之下放开：Linux 和 macOS 是租约；Windows 是 Server 自己的放开加上同一份租约（见 [`server::WindowsRelease`]）。都用 `acquire` 取得、`publish` 续期，放下时撤销。
+#[cfg(not(windows))]
+use Lease as Release;
+
+/// The lease as one writer holds it: where it is and what this writer last put there.
+pub struct Lease {
+    path: PathBuf,
+    #[cfg(unix)]
+    directory: std::fs::File,
+    #[cfg(unix)]
+    lock: std::fs::File,
+    /// The process and a number no other lease in it has, so two leases in one process are told apart too.
+    owner: String,
+    /// The number in `owner`, which also names this lease's staged file, so two leases in one process never stage over each other.
+    serial: u64,
+    written: String,
+}
+
+impl Lease {
+    pub fn acquire(user_data: &Path) -> std::io::Result<Self> {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let serial = NEXT.fetch_add(1, Ordering::Relaxed);
+        #[cfg(unix)]
+        let directory = open_lease_directory(user_data)?;
+        #[cfg(unix)]
+        let lock = open_lease_lock_at(&directory)?;
+        let mut lease = Self {
+            path: user_data.join(LEASE_NAME),
+            #[cfg(unix)]
+            directory,
+            #[cfg(unix)]
+            lock,
+            owner: format!("{} {serial}", std::process::id()),
+            serial,
+            written: String::new(),
+        };
+        lease.publish()?;
+        Ok(lease)
+    }
+
+    /// Write the lease with an expiry `LEASE_DURATION` from now, replacing any earlier one in a single rename so a host never reads a partial file.
+    pub fn publish(&mut self) -> std::io::Result<()> {
+        #[cfg(unix)]
+        let lock = self.lock.try_clone()?;
+        #[cfg(not(unix))]
+        let lock = open_lease_lock(&self.path)?;
+        crate::file_lock::exclusive(&lock)?;
+        let result = self.publish_locked();
+        #[cfg(unix)]
+        let unlock = crate::file_lock::unlock(&lock);
+        #[cfg(not(unix))]
+        let unlock = Ok(());
+        match (result, unlock) {
+            (Err(error), _) => Err(error),
+            (Ok(()), Err(error)) => Err(error),
+            (Ok(()), Ok(())) => Ok(()),
+        }
+    }
+
+    fn publish_locked(&mut self) -> std::io::Result<()> {
+        let expiry = SystemTime::now()
+            .checked_add(LEASE_DURATION)
+            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+            .ok_or_else(|| std::io::Error::other("clock before the epoch"))?
+            .as_millis();
+        let staged_name = format!("{LEASE_NAME}.{}-{}", std::process::id(), self.serial);
+        let staged = self.path.with_file_name(&staged_name);
+        reject_symlinked_path_ancestors(&self.path)?;
+        reject_symlinked_path_ancestors(&staged)?;
+        // The owner line tells this lease from one another writer put up; the expiry alone could coincide.
+        let contents = format!("{expiry}\n{}\n", self.owner);
+        #[cfg(not(unix))]
+        let file = {
+            let mut file = OpenOptions::new();
+            file.write(true).create_new(true);
+            file
+        };
+        #[cfg(unix)]
+        let mut output = {
+            let fd = rustix::fs::openat(
+                &self.directory,
+                &staged_name,
+                rustix::fs::OFlags::WRONLY
+                    | rustix::fs::OFlags::CREATE
+                    | rustix::fs::OFlags::EXCL
+                    | rustix::fs::OFlags::NOFOLLOW
+                    | rustix::fs::OFlags::CLOEXEC
+                    | rustix::fs::OFlags::NONBLOCK,
+                rustix::fs::Mode::from_raw_mode(0o600),
+            )?;
+            std::fs::File::from(fd)
+        };
+        #[cfg(not(unix))]
+        let mut output = file.open(&staged)?;
+        if let Err(error) = output
+            .write_all(contents.as_bytes())
+            .and_then(|()| output.sync_all())
+        {
+            #[cfg(unix)]
+            let _ =
+                rustix::fs::unlinkat(&self.directory, &staged_name, rustix::fs::AtFlags::empty());
+            #[cfg(not(unix))]
+            let _ = std::fs::remove_file(&staged);
+            return Err(error);
+        }
+        #[cfg(unix)]
+        let rename: std::io::Result<()> =
+            rustix::fs::renameat(&self.directory, &staged_name, &self.directory, LEASE_NAME)
+                .map_err(Into::into);
+        #[cfg(not(unix))]
+        let rename = std::fs::rename(&staged, &self.path);
+        if let Err(error) = rename {
+            #[cfg(unix)]
+            let _ =
+                rustix::fs::unlinkat(&self.directory, &staged_name, rustix::fs::AtFlags::empty());
+            #[cfg(not(unix))]
+            let _ = std::fs::remove_file(&staged);
+            return Err(error);
+        }
+        self.written = contents;
+        Ok(())
+    }
+
+    fn remove_if_current_locked(&self) {
+        #[cfg(unix)]
+        let current = read_lease_at(&self.directory, OsStr::new(LEASE_NAME)).ok();
+        #[cfg(not(unix))]
+        let current = read_lease(&self.path);
+        if current.is_some_and(|current| current == self.written) {
+            #[cfg(unix)]
+            let _ = rustix::fs::unlinkat(&self.directory, LEASE_NAME, rustix::fs::AtFlags::empty());
+            #[cfg(not(unix))]
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
+impl Drop for Lease {
+    /// Remove the lease only while it is still the one this writer last wrote.
+    /// The persistent lock makes the owner check and removal one operation with
+    /// respect to every cooperating writer.
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        if crate::file_lock::exclusive(&self.lock).is_ok() {
+            self.remove_if_current_locked();
+            let _ = crate::file_lock::unlock(&self.lock);
+        }
+        #[cfg(not(unix))]
+        if let Ok(lock) = open_lease_lock(&self.path) {
+            if crate::file_lock::exclusive(&lock).is_ok() {
+                self.remove_if_current_locked();
+            }
+        }
+    }
+}
+
+/// The lease itself, one still being staged under `<lease>.<pid>-<n>` (by
+/// these writers and by the macOS input method), or the persistent coordination
+/// lock. Copying any of them along with the user directory would carry stale
+/// maintenance state into the copy. Only the Linux data-directory move copies
+/// the user directory.
+pub fn is_lease_file(name: &OsStr) -> bool {
+    name.to_str().is_some_and(|name| {
+        name.strip_prefix(LEASE_NAME)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
+    })
+}
+
+/// The hosts asked to let go of `user_data` for one settings-page action, which may be several requests: an import larger than one host request is sent in batches. The lease goes up the first time a request finds the dictionaries busy and stays up for every request after it, so the hosts close their sessions once rather than once per batch, and it is renewed before each later request so a long import does not outlive its expiry. 一个 `attempt` 本身跑得比租约还长时（慢盘上设置页的一个大批写入请求），执行期间也每隔 [`RENEW_INTERVAL`] 续一次，否则租约在请求中途过期，宿主重新建会话时撞上独占锁（#9918）。这只盖住 `attempt` 执行期间：`run` 返回之后才写入的调用方（WebDAV 同步、完整云备份的激活）仍要在写入期间自己再调 `run` 续期。`announce` runs once, right after the lease first goes up, so a host that can be told directly (the macOS input method) lets go at once instead of on its timer. Dropping this removes the lease, which is the resume.
+pub struct QuiescedHosts<'a, Announce: FnMut()> {
+    user_data: Option<&'a Path>,
+    announce: Announce,
+    lease: Option<Release>,
+    renew_every: Duration,
+}
+
+impl<'a, Announce: FnMut()> QuiescedHosts<'a, Announce> {
+    pub fn new(user_data: Option<&'a str>, announce: Announce) -> Self {
+        Self {
+            user_data: user_data.map(Path::new).filter(|path| path.is_absolute()),
+            announce,
+            lease: None,
+            renew_every: RENEW_INTERVAL,
+        }
+    }
+
+    /// Run `attempt`; when it fails only because an input session holds the dictionaries, ask the hosts to let go and retry until it gets through or the budget runs out. Any other failure is about the request itself and is returned as it is. A completed write is never replayed, because only the lock failure is retried.
+    pub fn run<T>(&mut self, attempt: impl FnMut() -> Result<T, String>) -> Result<T, String> {
+        self.run_within(RETRY_BUDGET, attempt)
+    }
+
+    fn run_within<T>(
+        &mut self,
+        budget: Duration,
+        mut attempt: impl FnMut() -> Result<T, String>,
+    ) -> Result<T, String> {
+        if let Some(lease) = &mut self.lease {
+            // A lease that cannot be renewed still holds until its expiry, and a host that reopens a session after that makes the attempt below busy, which is retried like any other.
+            let _ = lease.publish();
+        }
+        let mut result = attempt_under_lease(self.lease.as_mut(), self.renew_every, &mut attempt);
+        if !matches!(&result, Err(reason) if reason == BUSY) {
+            return result;
+        }
+        let Some(user_data) = self.user_data else {
+            return result;
+        };
+        if self.lease.is_none() {
+            let Ok(lease) = Release::acquire(user_data) else {
+                return result;
+            };
+            self.lease = Some(lease);
+            (self.announce)();
+        }
+        let deadline = Instant::now() + budget;
+        while matches!(&result, Err(reason) if reason == BUSY) && Instant::now() < deadline {
+            std::thread::sleep(RETRY_INTERVAL);
+            // Server 放开之后又建起来的会话（期间有窗口拿到焦点，或者另一个写者恢复了会话）要再请求一次 Server 才放开。TIP 和 Linux、macOS 的宿主一样一直看着租约，所以只再问 Server。
+            #[cfg(windows)]
+            if let Some(release) = &mut self.lease {
+                let _ = release.ask_server_again();
+            }
+            result = attempt_under_lease(self.lease.as_mut(), self.renew_every, &mut attempt);
+        }
+        result
+    }
+}
+
+/// 运行一次 `attempt`；有租约时另起一个线程，每隔 `renew_every` 续一次，`attempt` 返回（或 panic）就停。起不了线程时照旧只运行 `attempt`，退回请求之前续的那一次。
+fn attempt_under_lease<T>(
+    lease: Option<&mut Release>,
+    renew_every: Duration,
+    attempt: &mut impl FnMut() -> Result<T, String>,
+) -> Result<T, String> {
+    let Some(lease) = lease else {
+        return attempt();
+    };
+    let (done, finished) = std::sync::mpsc::channel::<()>();
+    std::thread::scope(|scope| {
+        let _renewer = std::thread::Builder::new()
+            .name("msime-dictionary-lease".into())
+            .spawn_scoped(scope, move || {
+                while let Err(std::sync::mpsc::RecvTimeoutError::Timeout) =
+                    finished.recv_timeout(renew_every)
+                {
+                    // 续不上时租约仍到原来的过期时间为止，和请求之间续期失败一样处理。
+                    let _ = lease.publish();
+                }
+            });
+        let result = attempt();
+        drop(done);
+        result
+    })
+}
+
+/// The Windows Server's release, asked for over its auxiliary pipe with the UTF-16LE message `DictionaryQuiesce` and given back with `DictionaryResume` (`platforms/windows/common/AuxMessage.h`). It answers "OK" only once its sessions really are gone, so that reply, not a write getting through, is what makes the exclusive lock safe to take. It gives the sessions back by itself 30 seconds after the last `DictionaryQuiesce`, so a writer that dies mid-import cannot leave input off for longer, and a long one renews the release before each request.
+#[cfg(any(windows, test))]
+pub mod server {
+    /// Server 的辅助管道名，不带 `\\.\pipe\` 前缀和版本后缀；与 `shared/contracts/windows_ipc.h` 的 `FANY_IME_AUX_NAMED_PIPE` 一致。
+    pub const PIPE_BASE_NAME: &str = "FanyImeAuxNamedPipe";
+
+    /// `edition` 的 Server 的辅助管道：每个版本都带 `.<id>` 后缀，例如 full 是 `\\.\pipe\FanyImeAuxNamedPipe.full`。几个版本同时安装时，词库维护只让本版本的 Server 放开会话。
+    pub fn pipe_name(edition: &crate::edition::Edition) -> Option<String> {
+        edition
+            .windows()
+            .map(|identity| identity.pipe_name(PIPE_BASE_NAME))
+    }
+
+    pub fn message(verb: &str) -> Vec<u8> {
+        verb.encode_utf16().flat_map(u16::to_le_bytes).collect()
+    }
+
+    /// The Server writes UTF-16LE "OK" and nothing else.
+    pub fn answered(reply: &[u8]) -> bool {
+        reply == b"O\x00K\x00"
+    }
+
+    /// Send `verb` and wait for the Server's answer. No pipe means no Server and so no sessions to release. Any other failure to reach it, a refused connection included, is reported rather than taken for release: going ahead would only meet the lock.
+    #[cfg(windows)]
+    pub fn ask(verb: &str) -> std::io::Result<()> {
+        use std::io::{Read, Write};
+        /// Every instance of the pipe is serving another client.
+        const ERROR_PIPE_BUSY: i32 = 231;
+        // 本进程所在安装包的版本（Server 目录里的 edition.json）。声明坏了时报错，而不是去叫 full 的 Server 放开会话。
+        let name = crate::edition::Edition::of_windows_package()
+            .ok()
+            .and_then(pipe_name)
+            .ok_or_else(|| {
+                std::io::Error::other("the package declares an edition this build does not know")
+            })?;
+        let mut attempt = 0;
+        let mut pipe = loop {
+            match std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&name)
+            {
+                Ok(pipe) => break pipe,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+                Err(error) if error.raw_os_error() == Some(ERROR_PIPE_BUSY) && attempt < 4 => {
+                    attempt += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                Err(error) => return Err(error),
+            }
+        };
+        pipe.write_all(&message(verb))?;
+        let mut reply = [0_u8; 8];
+        let read = pipe.read(&mut reply)?;
+        if answered(&reply[..read]) {
+            Ok(())
+        } else {
+            Err(std::io::Error::other(
+                "the input method server did not release its sessions",
+            ))
+        }
+    }
+
+    #[cfg(windows)]
+    pub struct ServerRelease(());
+
+    #[cfg(windows)]
+    impl ServerRelease {
+        /// The user directory is where the Linux and macOS lease goes; the Server needs no path.
+        pub fn acquire(_user_data: &std::path::Path) -> std::io::Result<Self> {
+            ask("DictionaryQuiesce")?;
+            Ok(Self(()))
+        }
+
+        pub fn publish(&mut self) -> std::io::Result<()> {
+            ask("DictionaryQuiesce")
+        }
+    }
+
+    #[cfg(windows)]
+    impl Drop for ServerRelease {
+        /// Resume whatever happened: input without sessions because an import failed would be worse than the failure itself.
+        fn drop(&mut self) {
+            let _ = ask("DictionaryResume");
+        }
+    }
+
+    /// Windows 上一次维护的放开。Server 只能放开它自己进程里的会话；每个用着输入法的应用进程里，TIP 还从同一份 runtime-options.json 建了一个宿主会话（`platforms/windows/tsf`），它同样以共享方式持有词库锁，Server 管不到。所以这里同时写下 Linux 和 macOS 宿主看的那份租约，TIP 在偏好定时器上看到它就放开自己的宿主会话（`platforms/windows/common/DictionaryQuiesceLease.h`），租约撤掉后重建。只问 Server 时独占锁永远拿不到，设置页的新增、导入和清除学习数据都以 `dictionary_busy` 结束（#9434）。
+    ///
+    /// 租约写不下时照旧只问 Server：那只是回到以前的行为，不该因此连 Server 也不放开。字段按声明顺序放下：先撤租约，TIP 开始重建，再让 Server 恢复。
+    #[cfg(windows)]
+    pub struct WindowsRelease {
+        lease: Option<super::Lease>,
+        server: ServerRelease,
+    }
+
+    #[cfg(windows)]
+    impl WindowsRelease {
+        pub fn acquire(user_data: &std::path::Path) -> std::io::Result<Self> {
+            let lease = super::Lease::acquire(user_data).ok();
+            Ok(Self {
+                server: ServerRelease::acquire(user_data)?,
+                lease,
+            })
+        }
+
+        /// 每个请求之前续期：租约和 Server 的放开都有 30 秒上限。
+        pub fn publish(&mut self) -> std::io::Result<()> {
+            let lease = self.lease.as_mut().map_or(Ok(()), super::Lease::publish);
+            self.server.publish().and(lease)
+        }
+
+        /// 重试间隙只再问一次 Server：在这期间重新建起的会话要再叫一次才放开，TIP 一直看着租约，用不着每 50 毫秒重写一遍。
+        pub fn ask_server_again(&mut self) -> std::io::Result<()> {
+            self.server.publish()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    /// One action of one request, with the hosts released again as soon as it is done.
+    fn quiesce_with<T>(
+        user_data: Option<&str>,
+        budget: Duration,
+        announce: impl FnMut(),
+        attempt: impl FnMut() -> Result<T, String>,
+    ) -> Result<T, String> {
+        QuiescedHosts::new(user_data, announce).run_within(budget, attempt)
+    }
+
+    fn lease_expiry(directory: &Path) -> Option<u128> {
+        std::fs::read_to_string(directory.join(LEASE_NAME))
+            .ok()
+            .and_then(|text| text.lines().next()?.parse().ok())
+    }
+
+    #[test]
+    fn a_lease_another_writer_replaced_is_left_in_place() {
+        let directory = tempfile::tempdir().unwrap();
+        let first = Lease::acquire(directory.path()).unwrap();
+        // Another writer takes the lease over while the first is still held.
+        let second = Lease::acquire(directory.path()).unwrap();
+        drop(first);
+        assert!(lease_expiry(directory.path()).is_some());
+        drop(second);
+        assert!(!directory.path().join(LEASE_NAME).exists());
+    }
+
+    #[test]
+    fn lease_owner_removal_is_serialized_with_a_new_publisher() {
+        let directory = tempfile::tempdir().unwrap();
+        let first = Lease::acquire(directory.path()).unwrap();
+        let lock = open_lease_lock(&first.path).unwrap();
+        crate::file_lock::exclusive(&lock).unwrap();
+
+        let (started, ready) = std::sync::mpsc::channel();
+        let path = directory.path().to_owned();
+        let publisher = std::thread::spawn(move || {
+            started.send(()).unwrap();
+            Lease::acquire(&path).unwrap()
+        });
+        ready.recv().unwrap();
+
+        // The publisher cannot replace the lease until the owner check and
+        // removal below have completed under the same advisory lock.
+        first.remove_if_current_locked();
+        drop(lock);
+        let second = publisher.join().unwrap();
+        assert_eq!(read_lease(&second.path), Some(second.written.clone()));
+
+        drop(first);
+        drop(second);
+        assert!(!directory.path().join(LEASE_NAME).exists());
+    }
+
+    #[test]
+    fn an_oversized_lease_is_ignored_without_reading_it_unboundedly() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(LEASE_NAME);
+        std::fs::write(&path, vec![b'x'; MAX_LEASE_BYTES as usize + 1]).unwrap();
+        assert_eq!(read_lease(&path), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hard_linked_lease_is_ignored() {
+        let directory = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let outside_file = outside.path().join("lease");
+        std::fs::write(&outside_file, b"synthetic\n").unwrap();
+        std::fs::hard_link(&outside_file, directory.path().join(LEASE_NAME)).unwrap();
+        msime_path_trust::open_to_other_users(directory.path()).unwrap();
+
+        assert_eq!(read_lease(&directory.path().join(LEASE_NAME)), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hard_linked_lease_lock_is_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let outside_file = outside.path().join("lock");
+        std::fs::write(&outside_file, b"synthetic").unwrap();
+        std::fs::hard_link(&outside_file, directory.path().join(LEASE_LOCK_NAME)).unwrap();
+        let directory_handle = open_lease_directory(directory.path()).unwrap();
+
+        assert!(open_lease_lock_at(&directory_handle).is_err());
+    }
+
+    #[test]
+    fn publish_does_not_overwrite_an_existing_staged_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let serial = 9_999_999;
+        let staged = directory
+            .path()
+            .join(format!("{LEASE_NAME}.{}-{serial}", std::process::id()));
+        std::fs::write(&staged, b"keep").unwrap();
+        #[cfg(unix)]
+        let directory_handle = open_lease_directory(directory.path()).unwrap();
+        #[cfg(unix)]
+        let lock_handle = open_lease_lock_at(&directory_handle).unwrap();
+        let mut lease = Lease {
+            path: directory.path().join(LEASE_NAME),
+            #[cfg(unix)]
+            directory: directory_handle,
+            #[cfg(unix)]
+            lock: lock_handle,
+            owner: format!("{} {serial}", std::process::id()),
+            serial,
+            written: String::new(),
+        };
+        assert!(lease.publish().is_err());
+        assert_eq!(std::fs::read_to_string(staged).unwrap(), "keep");
+        assert!(!directory.path().join(LEASE_NAME).exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_user_data_is_rejected_without_writing_outside() {
+        use msime_path_trust::untrusted_symlink as symlink;
+
+        let target = tempfile::tempdir().unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let linked = parent.path().join("linked-user-data");
+        symlink(target.path(), &linked).unwrap();
+        assert!(Lease::acquire(&linked).is_err());
+        assert!(!target.path().join(LEASE_NAME).exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_lease_below_a_symlinked_parent_is_rejected() {
+        use msime_path_trust::untrusted_symlink as symlink;
+
+        let target = tempfile::tempdir().unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let target_data = target.path().join("data");
+        std::fs::create_dir(&target_data).unwrap();
+        let linked = parent.path().join("linked");
+        symlink(target.path(), &linked).unwrap();
+        let user_data = linked.join("data");
+        std::fs::write(user_data.join(LEASE_NAME), b"synthetic\n").unwrap();
+        assert!(Lease::acquire(&user_data).is_err());
+        assert_eq!(
+            std::fs::read_to_string(target_data.join(LEASE_NAME)).unwrap(),
+            "synthetic\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn publishing_after_user_directory_replacement_stays_on_the_original_inode() {
+        let root = tempfile::tempdir().unwrap();
+        let user_data = root.path().join("user-data");
+        std::fs::create_dir(&user_data).unwrap();
+        let moved = root.path().join("moved-user-data");
+        let mut lease = Lease::acquire(&user_data).unwrap();
+
+        std::fs::rename(&user_data, &moved).unwrap();
+        std::fs::create_dir(&user_data).unwrap();
+        lease.publish().unwrap();
+
+        assert!(moved.join(LEASE_NAME).exists());
+        assert!(!user_data.join(LEASE_NAME).exists());
+        drop(lease);
+        assert!(!moved.join(LEASE_NAME).exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dropping_after_user_directory_replacement_does_not_remove_the_replacement_lease() {
+        let root = tempfile::tempdir().unwrap();
+        let user_data = root.path().join("user-data");
+        std::fs::create_dir(&user_data).unwrap();
+        let moved = root.path().join("moved-user-data");
+        let lease = Lease::acquire(&user_data).unwrap();
+        let written = lease.written.clone();
+
+        std::fs::rename(&user_data, &moved).unwrap();
+        std::fs::create_dir(&user_data).unwrap();
+        std::fs::write(user_data.join(LEASE_NAME), written).unwrap();
+        drop(lease);
+
+        assert!(!moved.join(LEASE_NAME).exists());
+        assert!(user_data.join(LEASE_NAME).exists());
+    }
+
+    #[test]
+    fn leases_in_one_process_publish_side_by_side() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().to_owned();
+        let writers: Vec<_> = (0..2)
+            .map(|_| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    let mut lease = Lease::acquire(&path).unwrap();
+                    for _ in 0..50 {
+                        lease.publish().unwrap();
+                    }
+                    lease
+                })
+            })
+            .collect();
+        let leases: Vec<_> = writers
+            .into_iter()
+            .map(|writer| writer.join().unwrap())
+            .collect();
+        // Whichever wrote last owns the lease, and no staged file is left behind.
+        let current = std::fs::read_to_string(path.join(LEASE_NAME)).unwrap();
+        assert!(leases.iter().any(|lease| lease.written == current));
+        assert_eq!(std::fs::read_dir(&path).unwrap().count(), 2);
+        drop(leases);
+        assert_eq!(std::fs::read_dir(&path).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn a_lease_a_host_raised_is_left_in_place() {
+        let directory = tempfile::tempdir().unwrap();
+        let lease = Lease::acquire(directory.path()).unwrap();
+        // The macOS input method raises the lease for its own dictionary window with its own owner line (`raise_dictionary_quiesce_lease`).
+        let raised = format!("{}\n4242 0\n", lease_expiry(directory.path()).unwrap());
+        std::fs::write(directory.path().join(LEASE_NAME), &raised).unwrap();
+        drop(lease);
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join(LEASE_NAME)).unwrap(),
+            raised
+        );
+    }
+
+    #[test]
+    fn busy_is_retried_under_a_lease_that_is_removed_afterwards() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let calls = Cell::new(0);
+        let result = quiesce_with(
+            Some(&user_data),
+            Duration::from_secs(2),
+            || {},
+            || {
+                calls.set(calls.get() + 1);
+                if calls.get() < 3 {
+                    // The hosts see the lease while the request is still being retried, with an expiry inside the bound they accept.
+                    if calls.get() == 2 {
+                        let now = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis();
+                        let expiry = lease_expiry(directory.path()).unwrap();
+                        assert!(expiry > now && expiry - now <= 30_000);
+                    }
+                    Err(BUSY.to_owned())
+                } else {
+                    Ok("imported")
+                }
+            },
+        );
+        assert_eq!(result, Ok("imported"));
+        assert_eq!(calls.get(), 3);
+        assert!(!directory.path().join(LEASE_NAME).exists());
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn one_lease_covers_every_request_of_an_action_and_is_renewed_between_them() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let announced = Cell::new(0);
+        let mut hosts = QuiescedHosts::new(Some(&user_data), || announced.set(announced.get() + 1));
+        let calls = Cell::new(0);
+        let first = hosts.run_within(Duration::from_secs(2), || {
+            calls.set(calls.get() + 1);
+            if calls.get() == 1 {
+                Err(BUSY.to_owned())
+            } else {
+                Ok(1)
+            }
+        });
+        assert_eq!(first, Ok(1));
+        let expiry = lease_expiry(directory.path()).unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+        // The next batch of the same import finds the hosts still released, under a lease pushed forward rather than one about to lapse.
+        let second = hosts.run_within(Duration::from_secs(2), || {
+            assert!(lease_expiry(directory.path()).unwrap() > expiry);
+            Ok(2)
+        });
+        assert_eq!(second, Ok(2));
+        // A later batch that finds the dictionaries busy again is retried under the same lease, and the hosts are not told a second time.
+        let calls = Cell::new(0);
+        let third = hosts.run_within(Duration::from_secs(2), || {
+            calls.set(calls.get() + 1);
+            if calls.get() == 1 {
+                Err(BUSY.to_owned())
+            } else {
+                Ok(3)
+            }
+        });
+        assert_eq!(third, Ok(3));
+        drop(hosts);
+        assert_eq!(announced.get(), 1);
+        assert!(!directory.path().join(LEASE_NAME).exists());
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn a_request_that_runs_past_the_renewal_interval_keeps_the_lease_renewed() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let mut hosts = QuiescedHosts::new(Some(&user_data), || {});
+        hosts.renew_every = Duration::from_millis(20);
+        let calls = Cell::new(0);
+        let result = hosts.run_within(Duration::from_secs(2), || {
+            calls.set(calls.get() + 1);
+            if calls.get() == 1 {
+                return Err(BUSY.to_owned());
+            }
+            // 请求执行期间宿主看到的过期时间被推后，而不是停在请求开始前续的那一次。
+            let before = lease_expiry(directory.path()).unwrap();
+            std::thread::sleep(Duration::from_millis(200));
+            assert!(lease_expiry(directory.path()).unwrap() > before);
+            Ok("imported")
+        });
+        assert_eq!(result, Ok("imported"));
+        // 请求一返回续期就停，租约不再被改写。
+        let settled = std::fs::read_to_string(directory.path().join(LEASE_NAME)).unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join(LEASE_NAME)).unwrap(),
+            settled
+        );
+        drop(hosts);
+        assert!(!directory.path().join(LEASE_NAME).exists());
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn other_failures_and_success_take_no_lease() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let calls = Cell::new(0);
+        let rejected: Result<(), String> = quiesce_with(
+            Some(&user_data),
+            Duration::from_secs(2),
+            || {},
+            || {
+                calls.set(calls.get() + 1);
+                assert!(!directory.path().join(LEASE_NAME).exists());
+                Err("dictionary import rejected".to_owned())
+            },
+        );
+        assert_eq!(rejected, Err("dictionary import rejected".to_owned()));
+        assert_eq!(calls.get(), 1);
+        let done = quiesce_with(Some(&user_data), Duration::from_secs(2), || {}, || Ok(1));
+        assert_eq!(done, Ok(1));
+    }
+
+    #[test]
+    fn busy_stays_busy_once_the_budget_runs_out_and_the_lease_goes() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let result: Result<(), String> = quiesce_with(
+            Some(&user_data),
+            Duration::from_millis(120),
+            || {},
+            || Err(BUSY.to_owned()),
+        );
+        assert_eq!(result, Err(BUSY.to_owned()));
+        assert!(!directory.path().join(LEASE_NAME).exists());
+    }
+
+    #[test]
+    fn hosts_are_told_once_and_only_while_the_lease_is_live() {
+        let directory = tempfile::tempdir().unwrap();
+        let user_data = directory.path().to_str().unwrap().to_owned();
+        let calls = Cell::new(0);
+        let announced = Cell::new(0);
+        let result = quiesce_with(
+            Some(&user_data),
+            Duration::from_secs(2),
+            || {
+                assert!(lease_expiry(directory.path()).is_some());
+                announced.set(announced.get() + 1);
+            },
+            || {
+                calls.set(calls.get() + 1);
+                if calls.get() < 4 {
+                    Err(BUSY.to_owned())
+                } else {
+                    Ok(())
+                }
+            },
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(announced.get(), 1);
+
+        // Nothing to release: the request went through, failed for its own reasons, or had nowhere to put a lease.
+        let silent = Cell::new(0);
+        let _ = quiesce_with(
+            Some(&user_data),
+            Duration::from_secs(2),
+            || silent.set(silent.get() + 1),
+            || Ok(()),
+        );
+        let _: Result<(), String> = quiesce_with(
+            Some(&user_data),
+            Duration::from_secs(2),
+            || silent.set(silent.get() + 1),
+            || Err("dictionary import rejected".to_owned()),
+        );
+        let _: Result<(), String> = quiesce_with(
+            Some("relative/user"),
+            Duration::from_millis(100),
+            || silent.set(silent.get() + 1),
+            || Err(BUSY.to_owned()),
+        );
+        assert_eq!(silent.get(), 0);
+    }
+
+    #[test]
+    fn the_windows_server_is_spoken_to_in_utf16() {
+        assert_eq!(
+            server::pipe_name(crate::edition::Edition::full()).unwrap(),
+            r"\\.\pipe\FanyImeAuxNamedPipe.full"
+        );
+        assert_eq!(
+            server::pipe_name(crate::edition::Edition::by_id("wubi").unwrap()).unwrap(),
+            r"\\.\pipe\FanyImeAuxNamedPipe.wubi"
+        );
+        assert_eq!(server::message("DictionaryResume")[..4], *b"D\x00i\x00");
+        assert_eq!(
+            server::message("DictionaryQuiesce").len(),
+            2 * "DictionaryQuiesce".len()
+        );
+        assert!(server::answered(b"O\x00K\x00"));
+        for reply in [&b""[..], b"O\x00", b"OK", b"O\x00K\x00\n\x00"] {
+            assert!(!server::answered(reply));
+        }
+    }
+
+    #[test]
+    fn lease_files_include_a_lease_being_staged() {
+        assert!(is_lease_file(OsStr::new(LEASE_NAME)));
+        assert!(is_lease_file(OsStr::new(".msime-dictionary-quiesce.4242")));
+        assert!(is_lease_file(OsStr::new(
+            ".msime-dictionary-quiesce.4242-0"
+        )));
+        assert!(is_lease_file(OsStr::new(".msime-dictionary-quiesce.lock")));
+        assert!(!is_lease_file(OsStr::new(".msime-dictionary-quiesced")));
+        assert!(!is_lease_file(OsStr::new(".msime-dictionary-access.lock")));
+        assert!(!is_lease_file(OsStr::new("msime_user.db")));
+    }
+
+    #[test]
+    fn without_an_absolute_user_directory_busy_is_returned_once() {
+        for user_data in [None, Some("relative/user")] {
+            let calls = Cell::new(0);
+            let result: Result<(), String> = quiesce_with(
+                user_data,
+                Duration::from_secs(2),
+                || {},
+                || {
+                    calls.set(calls.get() + 1);
+                    Err(BUSY.to_owned())
+                },
+            );
+            assert_eq!(result, Err(BUSY.to_owned()));
+            assert_eq!(calls.get(), 1);
+        }
+    }
+}

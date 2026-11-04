@@ -1,0 +1,48 @@
+{
+  "contractVersion": 5,
+  "simple": [
+    { "input": ",", "output": "，" },
+    { "input": ".", "output": "。" },
+    { "input": "?", "output": "？" },
+    { "input": "!", "output": "！" },
+    { "input": ";", "output": "；" },
+    { "input": ":", "output": "：" },
+    { "input": "(", "output": "（" },
+    { "input": ")", "output": "）" },
+    { "input": "[", "output": "【" },
+    { "input": "]", "output": "】" },
+    { "input": "\\", "output": "、" },
+    { "input": "`", "output": "·" },
+    { "input": "$", "output": "￥" },
+    { "input": "^", "output": "……" },
+    { "input": "_", "output": "——" },
+    { "input": "{", "output": "「" },
+    { "input": "}", "output": "」" }
+  ],
+  "alternating": [
+    { "input": "\"", "opening": "“", "closing": "”" },
+    { "input": "'", "opening": "‘", "closing": "’" }
+  ],
+  "nested": {
+    "openingInput": "<",
+    "closingInput": ">",
+    "opening": "《",
+    "nestedOpening": "〈",
+    "closing": "》",
+    "nestedClosing": "〉"
+  },
+  "enumerationComma": [
+    { "input": "\\", "output": "、" },
+    { "input": "/", "output": "、" }
+  ],
+  "styles": {
+    "cornerQuotes": [
+      { "input": "\"", "opening": "『", "closing": "』" },
+      { "input": "'", "opening": "「", "closing": "」" }
+    ],
+    "hollowBrackets": [
+      { "input": "[", "output": "〖" },
+      { "input": "]", "output": "〗" }
+    ]
+  }
+}

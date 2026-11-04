@@ -1,0 +1,23 @@
+[package]
+name = "pangu-spacing"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# 仓库里用路径引用 SDK。复制到仓库外面单独开发时改成 msime-script-sdk = "0.1"（或者直接用 msime-pack new 生成新插件）。
+msime-script-sdk = { path = "../../crates/script-sdk" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# 模板会被复制出去单独构建，不属于仓库的 Cargo 工作区。
+[workspace]

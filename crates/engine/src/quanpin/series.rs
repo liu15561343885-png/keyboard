@@ -1,0 +1,910 @@
+//! Correction resolution, series keys, alternative-segmentation merging and autocorrect marking (quanpin.md §4.2-§4.3, §7.5, §7.7, §11.1-§11.2). Pure functions over rows; the dictionary drives them.
+
+use std::collections::HashSet;
+use std::fmt::Write;
+
+use crate::pinyin::autocorrect::{
+    autocorrect_cut_kbest, looks_like_syllable_with_jianpin_tail, AutocorrectCut,
+};
+use crate::pinyin::segment::join_segments;
+use crate::pinyin::syllables::{has_only_complete_pinyin_segments, is_intact, is_prefix};
+use crate::types::{autocorrect_type, CandidateSource, WordItem};
+
+/// How many ranked correction cuts feed the query pipeline: the primary cut becomes the query key and the rest ride along as alternative segmentations. Dropped-initial keys such as `uan` have 10-15 equally weighted deletion targets (cuan/duan/guan/...), and k = 3 cut the list by table order before reaching the right reading (quan'li for uanli); k = 9 lifted R@1/R@3 on the deletion and mixed eval sets with no p95 change (QD:90-97).
+pub const AUTOCORRECT_CUT_KBEST: usize = 9;
+pub const ALTERNATIVE_SEGMENTATION_CANDIDATE_LIMIT: usize = 128;
+/// 被保护的那个座位只抬升「根本看不见」的读法。已经出现在首页上的读法保留权重挣来的名次：调频学习写的就是权重，
+/// 再钉一次等于把用户刚打出来的名次覆盖掉。6 是缺省页大小，而且故意不跟随每页候选数设置（QD:29-34，overlays.md §1.1）。
+/// 它和 `QuanpinDictionary::first_page_rows` 是两回事：那条问的是「这一页放不放得下」，所以跟随宿主的每页候选数；
+/// 这条保护的是跨输入的固定座位，因此写死。
+pub const ALTERNATIVE_SEGMENTATION_FIRST_PAGE_SIZE: usize = 6;
+/// Where the promoted best alternative lands.
+pub const BEST_ALTERNATIVE_SEGMENTATION_INDEX: usize = 1;
+/// An alternative is promoted only when its best weight is at least 1% of the primary reading's top weight; rarer re-segmentations are noise.
+pub const ALTERNATIVE_SEGMENTATION_PROMOTION_RATIO: i64 = 100;
+pub const MAX_SYLLABLES_FOR_MULTIPLE_SEGMENTATIONS: usize = 4;
+/// Continuations are only taken up to three syllables longer: past that the rows' weights have dropped to a few dozen and the seats are better left to prefix characters (QD:23-25).
+pub const LONGER_PHRASE_EXTRA_SYLLABLES: usize = 3;
+/// 补全词最多并入这么多条。精确同音词够填一页时整组补全词都不并入（见 `query_series`），这个上限再压住同长度表不足一页时补全词能占的座位。
+pub const LONGER_PHRASE_LIMIT: usize = 3;
+const SMALL_UNIQUE_ROWS: usize = 64;
+
+/// How one raw input is read (QD:110-215).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SeriesResolution {
+    pub corrected_input: bool,
+    pub corrected: Vec<String>,
+    pub alternative_corrected_cuts: Vec<Vec<String>>,
+    pub costlier_corrected_cuts: Vec<Vec<String>>,
+    pub segmentation: String,
+    pub cache_key: String,
+}
+
+/// QD:110-215, before memoisation.
+pub fn resolve_series_query(
+    raw: &str,
+    segments: &[String],
+    autocorrect_types: u32,
+) -> SeriesResolution {
+    let mut result = SeriesResolution::default();
+    // Guard order matters: the jianpin-shape predicate runs before the search so a guarded input never pays for it. Both guards say "the user did not mistype". The base segmentation is deliberately not part of the gate: the search works on the raw letters, and an empty base cut (a dropped initial such as uanli for quan'li) is often exactly the input that needs correcting.
+    let eligible = autocorrect_types != 0
+        && !raw.contains('\'')
+        && !has_only_complete_pinyin_segments(segments)
+        && !looks_like_syllable_with_jianpin_tail(raw);
+    if eligible {
+        let cuts = autocorrect_cut_kbest(raw, autocorrect_types, AUTOCORRECT_CUT_KBEST);
+        if !cuts.is_empty() {
+            result.corrected_input = true;
+            populate_from_cuts(&mut result, cuts, "");
+        } else {
+            // The k-best search only reaches the end when every segment is a complete syllable, so "hauzh" (hau typo + zh jianpin) fails outright. Retry on the head without a trailing incomplete syllable, shortest tail first so the correction explains as much of the input as possible. Neighbor corrections are left out of the head: they have the widest false-positive surface, and stacking them on a speculative jianpin boundary turns deletion-shaped input into noise (shng -> sun + g -> 笋干).
+            let head_types = autocorrect_types & !autocorrect_type::NEIGHBOR;
+            let mut tail_len = 1;
+            while head_types != 0 && tail_len <= 2 && tail_len < raw.len() {
+                let (head, tail) = raw.split_at(raw.len() - tail_len);
+                tail_len += 1;
+                if !is_prefix(tail) || is_intact(tail) {
+                    continue;
+                }
+                let head_cuts = autocorrect_cut_kbest(head, head_types, AUTOCORRECT_CUT_KBEST);
+                if head_cuts.is_empty() {
+                    continue;
+                }
+                result.corrected_input = true;
+                populate_from_cuts(&mut result, head_cuts, tail);
+                break;
+            }
+        }
+    }
+    // Both branches rebuild the segmentation from segments: they already carry the alias-normalised spelling, while a caller's explicit string could keep the alias spelling, and then nothing would look rewritten and "nue'hao" could never be marked. Delimiters sit on syllable boundaries, so split and join round-trip them.
+    result.segmentation = if result.corrected_input {
+        join_segments(&result.corrected)
+    } else if segments.is_empty() {
+        raw.to_string()
+    } else {
+        join_segments(segments)
+    };
+    result.cache_key = series_cache_key_with_prefix(
+        raw,
+        &result.segmentation,
+        autocorrect_types,
+        result.corrected_input,
+    );
+    result
+}
+
+/// The primary cut defines the cost tier; same-cost readings compete with it on frequency, costlier ones stay behind it.
+fn populate_from_cuts(
+    result: &mut SeriesResolution,
+    cuts: Vec<AutocorrectCut>,
+    jianpin_tail: &str,
+) {
+    let to_segments = |cut: AutocorrectCut| {
+        let mut segments = cut.into_syllables();
+        if !jianpin_tail.is_empty() {
+            segments.push(jianpin_tail.to_string());
+        }
+        segments
+    };
+    let mut cuts = cuts.into_iter();
+    let primary = cuts.next().expect("autocorrect cuts are non-empty");
+    for cut in cuts {
+        if cut.same_cost_as(&primary) {
+            result.alternative_corrected_cuts.push(to_segments(cut));
+        } else {
+            result.costlier_corrected_cuts.push(to_segments(cut));
+        }
+    }
+    result.corrected = to_segments(primary);
+}
+
+/// `"T<types>:" + ("M:" | "A:") + (segmentation or raw)` (QD:63-67). The mask is part of the key because correction alternatives and typo sentences depend on it, and one input can be asked with different masks in a session (a suppressed input clears it for that input only).
+pub fn series_cache_key(raw: &str, segmentation: &str, autocorrect_types: u32) -> String {
+    series_cache_key_with_prefix(raw, segmentation, autocorrect_types, false)
+}
+
+fn series_cache_key_with_prefix(
+    raw: &str,
+    segmentation: &str,
+    autocorrect_types: u32,
+    corrected: bool,
+) -> String {
+    let mode = if raw.contains('\'') { "M:" } else { "A:" };
+    let reading = if segmentation.is_empty() {
+        raw
+    } else {
+        segmentation
+    };
+    // Reserve the complete key once: `resolve_series_query` used to format around a second
+    // already-allocated key when adding the correction marker.
+    let type_digits = if autocorrect_types == 0 {
+        1
+    } else {
+        autocorrect_types.ilog10() as usize + 1
+    };
+    let mut key =
+        String::with_capacity(reading.len() + 4 + type_digits + usize::from(corrected) * 2);
+    if corrected {
+        key.push_str("C:");
+    }
+    write!(&mut key, "T{autocorrect_types}:{mode}{reading}")
+        .expect("writing a series cache key to String cannot fail");
+    key
+}
+
+/// Lowercase, drop `'`, keep `v` distinct from `u` (QD:75-88). The ü alias rewrite is a marking source by product decision: a typed `nue` whose primary segmentation is `nve` must compare as different.
+pub fn fold_reading(text: &str) -> String {
+    let capacity = text.bytes().filter(|&byte| byte != b'\'').count();
+    let mut folded = String::with_capacity(capacity);
+    for character in text.chars().filter(|&character| character != '\'') {
+        folded.push(character.to_ascii_lowercase());
+    }
+    folded
+}
+
+fn folded_reading_equal(left: &str, right: &str) -> bool {
+    left.chars()
+        .filter(|&character| character != '\'')
+        .map(|character| character.to_ascii_lowercase())
+        .eq(right
+            .chars()
+            .filter(|&character| character != '\'')
+            .map(|character| character.to_ascii_lowercase()))
+}
+
+/// 这次查询的主切分或任一备选切分的字母和原文不同，也就是有纠错读法在作用。
+pub fn has_corrected_cut(raw: &str, primary_segmentation: &str, corrected_cuts: &[String]) -> bool {
+    std::iter::once(primary_segmentation)
+        .chain(corrected_cuts.iter().map(String::as_str))
+        .any(|cut| !cut.is_empty() && !folded_reading_equal(cut, raw))
+}
+
+/// QD:1006-1054: rows read from a corrected cut get `corrected_from = fold(raw)`.
+pub fn mark_autocorrect_candidates(
+    candidates: &mut [WordItem],
+    raw: &str,
+    primary_segmentation: &str,
+    corrected_cuts: &[String],
+) {
+    // A row comes from a corrected reading exactly when its letters equal some correction cut's letters while those differ from the typed letters. Comparing letters alone would also sweep up prefix rows the user spelled correctly (keneng -> ke, single-letter jianpin expansions); both rules together keep those unmarked.
+    if !has_corrected_cut(raw, primary_segmentation, corrected_cuts) {
+        return;
+    }
+    let cuts =
+        || std::iter::once(primary_segmentation).chain(corrected_cuts.iter().map(String::as_str));
+    let mut raw_letters = None;
+    for item in candidates
+        .iter_mut()
+        .filter(|item| item.corrected_from.is_empty())
+    {
+        // A cut can fold back to exactly the typed letters; matching that set would label a row the user spelled correctly, so only the sets that differ count.
+        if cuts().any(|cut| {
+            !cut.is_empty()
+                && !folded_reading_equal(cut, raw)
+                && folded_reading_equal(cut, &item.pinyin)
+        }) {
+            let folded = raw_letters.get_or_insert_with(|| fold_reading(raw));
+            item.corrected_from = folded.as_str().into();
+        }
+    }
+}
+
+/// 全辅音输入（`qjn`、`zhr`、`shng`）本身就是一串简拼，纠错只是另一种猜测（漏了或按偏了韵母）。字面简拼里读满全部按键的多字词条说明这串简拼确实对得上词，于是把它们挪到最前面；纠错读法和只读了一部分按键的字面行依次跟在后面，各自的相对顺序不变，纠错行照旧由 `mark_autocorrect_candidates` 打标。字面简拼一条整词都没有时列表原样不动，纠错读法继续打头。带元音的输入不走这条规则：`sahng` 的字面读法 sa'h'n'g 能读出「撒谎那个」，但那是音节加简拼的混合形状，误触的可能比简拼大得多（#9903）。
+///
+/// 两字母、三字母的简拼表很密，`zhr` 读满全部按键的 zh'r 词有上百条，全排在前面会把纠错读法挤出前几页，等于关掉了全辅音输入的纠错。所以原来打头的那条纠错候选最多退到 `kept_seat`（调用方给首页最后一个座位）：首位和前面的座位仍归字面简拼词，纠错读法在首页还看得见。
+pub fn lead_literal_abbreviation_phrases(rows: &mut [WordItem], raw: &str, kept_seat: usize) {
+    let consonants_only = !raw.is_empty()
+        && raw.bytes().all(|byte| {
+            byte.is_ascii_alphabetic()
+                && !matches!(
+                    byte.to_ascii_lowercase(),
+                    b'a' | b'e' | b'i' | b'o' | b'u' | b'v'
+                )
+        });
+    if !consonants_only {
+        return;
+    }
+    // 匹配码折叠后等于原文字母，就是照原样读满了全部按键的字面行；纠错行的匹配码是改过的读音，整句行不算词条。
+    let is_literal_phrase = |item: &WordItem| {
+        !item.sentence_association
+            && item.word.chars().nth(1).is_some()
+            && folded_reading_equal(&item.pinyin, raw)
+    };
+    let phrases = rows.iter().filter(|item| is_literal_phrase(item)).count();
+    if phrases == 0 {
+        return;
+    }
+    // 字面行的匹配码是原文的前缀；不是前缀的打头行来自纠错读法。
+    let correction_leads = rows.first().is_some_and(|item| {
+        !is_literal_phrase(item) && !fold_reading(raw).starts_with(&fold_reading(&item.pinyin))
+    });
+    // 稳定排序只把字面整词提到前面，其余行保持原来的先后，原来打头的纠错行因此紧跟在字面整词后面。
+    rows.sort_by_key(|item| !is_literal_phrase(item));
+    if correction_leads && phrases > kept_seat {
+        rows[kept_seat..=phrases].rotate_right(1);
+    }
+}
+
+/// The promotion and union rule of `alternative_segmentation_page` (QD:888-945): `primary_full` and `alternatives` are the full-key rows of the primary and alternative segmentations; `result` is the series answer so far.
+pub fn merge_alternative_segmentations(
+    result: Vec<WordItem>,
+    primary_full: Vec<WordItem>,
+    alternatives: Vec<WordItem>,
+) -> Vec<WordItem> {
+    merge_alternative_rows(result, primary_full.into_iter(), alternatives)
+}
+
+/// 主行可逐条从缓存复制进最终向量，拥有页调用方仍直接移交行。
+pub(super) fn merge_alternative_rows(
+    result: Vec<WordItem>,
+    mut primary_full: impl ExactSizeIterator<Item = WordItem>,
+    alternatives: Vec<WordItem>,
+) -> Vec<WordItem> {
+    let Some(best_alternative) = alternatives.first() else {
+        return result;
+    };
+    let capacity = result
+        .len()
+        .saturating_add(primary_full.len())
+        .saturating_add(alternatives.len());
+    let first_primary = primary_full.next();
+    let promote = best_alternative
+        .weight
+        .saturating_mul(ALTERNATIVE_SEGMENTATION_PROMOTION_RATIO)
+        >= first_primary.as_ref().map_or(0, |item| item.weight);
+    // 先记录词面缓冲地址；移动 `WordItem` 不会改变其 `String` 缓冲，唯一词无需复制。存在同文行时保留文字副本，以便去重后回退到幸存行。
+    let best_word_pointer = best_alternative.word.as_ptr();
+    let mut merged = Vec::with_capacity(capacity);
+    merged.extend(first_primary);
+    merged.extend(primary_full);
+    let duplicate_best_word = (promote
+        && merged
+            .iter()
+            .chain(alternatives.iter().skip(1))
+            .any(|item| item.word == best_alternative.word))
+    .then(|| best_alternative.word.clone());
+
+    merged.extend(alternatives);
+    merged.sort_by_key(|item| std::cmp::Reverse(item.weight));
+    retain_unique_sorted_rows(&mut merged);
+
+    if promote {
+        let at = merged
+            .iter()
+            .position(|item| item.word.as_ptr() == best_word_pointer)
+            .or_else(|| {
+                duplicate_best_word
+                    .as_deref()
+                    .and_then(|word| merged.iter().position(|item| item.word == word))
+            });
+        if let Some(at) = at {
+            if at >= ALTERNATIVE_SEGMENTATION_FIRST_PAGE_SIZE {
+                let promoted = merged.remove(at);
+                merged.insert(BEST_ALTERNATIVE_SEGMENTATION_INDEX, promoted);
+            }
+        }
+    }
+
+    // All of `result`, not a suffix of it: the series answer carries whole-sentence rows inside its full-key group, so index arithmetic that assumes it starts with `primary_full` would drop them. The word dedup keeps the primary rows already merged from repeating.
+    append_unique_words(&mut merged, result);
+    merged
+}
+
+/// 备选系列按匹配字母数稳定合并；词频和整句概率不作跨来源比较。
+pub(super) fn merge_series_by_coverage(result: &mut Vec<WordItem>, supplemental: Vec<WordItem>) {
+    result.extend(supplemental);
+    result.sort_by_key(|item| {
+        std::cmp::Reverse(item.pinyin.bytes().filter(|&byte| byte != b'\'').count())
+    });
+    retain_unique_sorted_rows(result);
+}
+
+/// 挂了逐键打分器时每条切分多解几条整句读法（`QuanpinDictionary::set_sentence_pool`），而打分器只比较前九条回答整串的行（`ordering::COMPARED_LIMIT`）。主切分多出来的读法照原样排在备选切分的整句前面，就会把备选切分的整句挤出比较：「fangan」的主切分是 fan'gan，多解三条「反感…」以后，备选切分 fang'an 的「两个方案都挺好的」排到第十位，模型再也看不到它，首选从「方案」变成「反感」。
+///
+/// 所以主切分（第一条整句所在的切分）的整句只留前 `kept` 条在原位，其余挪到所有备选切分的整句之后；整句只来自一条切分时什么都不动。`kept` 是不挂打分器时的条数，备选切分进入比较的那几条因此和以前相同，多解的读法只占用原来空着的比较位。只动来源为词网格、读满整串、不是纠错读出的行，其余行的座位不变。
+pub(super) fn defer_pooled_sentences(rows: &mut Vec<WordItem>, raw: &str, kept: usize) {
+    let letters = |text: &str| text.bytes().filter(|&byte| byte != b'\'').count();
+    let full = letters(raw);
+    let slots: Vec<usize> = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, row)| {
+            row.source == CandidateSource::Generated
+                && row.sentence_association
+                && row.corrected_from.is_empty()
+                && letters(&row.pinyin) == full
+        })
+        .map(|(index, _)| index)
+        .collect();
+    let Some(&first) = slots.first() else {
+        return;
+    };
+    let primary = rows[first].canonical_pinyin.clone();
+    if slots
+        .iter()
+        .all(|&index| rows[index].canonical_pinyin == primary)
+    {
+        return;
+    }
+    // 新的第 k 个整句座位放原来第 `order[k]` 个整句。
+    let mut order = Vec::with_capacity(slots.len());
+    let mut deferred = Vec::new();
+    let mut primary_seen = 0;
+    for (position, &index) in slots.iter().enumerate() {
+        if rows[index].canonical_pinyin == primary {
+            primary_seen += 1;
+            if primary_seen > kept {
+                deferred.push(position);
+                continue;
+            }
+        }
+        order.push(position);
+    }
+    if deferred.is_empty() {
+        return;
+    }
+    order.extend(deferred);
+    // 先按座位从后往前取出全部整句，再按新顺序从前往后放回原来的座位。
+    let mut taken: Vec<Option<WordItem>> = slots
+        .iter()
+        .rev()
+        .map(|&index| Some(rows.remove(index)))
+        .collect();
+    taken.reverse();
+    for (&index, &from) in slots.iter().zip(&order) {
+        let row = taken[from].take().expect("each sentence is placed once");
+        rows.insert(index, row);
+    }
+}
+
+/// 对已排序的行按词面去重，保留首条及原有向量容量。
+fn retain_unique_sorted_rows(rows: &mut Vec<WordItem>) {
+    // 候选页规模内直接扫描已保留的词，避免为一次合并建立临时哈希表和布尔数组。
+    if rows.len() <= SMALL_UNIQUE_ROWS {
+        let mut write = 0;
+        for read in 0..rows.len() {
+            if rows[..write]
+                .iter()
+                .any(|item| item.word == rows[read].word)
+            {
+                continue;
+            }
+            if write != read {
+                rows.swap(write, read);
+            }
+            write += 1;
+        }
+        rows.truncate(write);
+        return;
+    }
+    // Borrow words while calculating each first occurrence, then retain in place after releasing the set.
+    let mut seen = HashSet::with_capacity(rows.len());
+    let duplicates = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| (!seen.insert(item.word.as_str())).then_some(index))
+        .collect::<Vec<_>>();
+    drop(seen);
+    let mut duplicates = duplicates.into_iter().peekable();
+    let mut write = 0;
+    for read in 0..rows.len() {
+        if duplicates.peek() == Some(&read) {
+            duplicates.next();
+            continue;
+        }
+        if write != read {
+            rows.swap(write, read);
+        }
+        write += 1;
+    }
+    rows.truncate(write);
+}
+
+/// Append the rows whose word is not already present (QD:993-1004). A row repeated inside `rows` is kept once, as the reference's scan over the growing list does.
+pub fn append_unique_words(result: &mut Vec<WordItem>, rows: Vec<WordItem>) {
+    if rows.is_empty() {
+        return;
+    }
+    if result.len().saturating_add(rows.len()) <= SMALL_UNIQUE_ROWS {
+        // 候选总量很小时边追加边扫描结果，避免建立临时哈希表和保留标记数组。
+        result.reserve(rows.len());
+        for item in rows {
+            if result.iter().any(|existing| existing.word == item.word) {
+                continue;
+            }
+            result.push(item);
+        }
+        return;
+    }
+    // Borrow words while checking duplicates, then release the borrows before moving rows into the result.
+    let mut seen = HashSet::with_capacity(result.len().saturating_add(rows.len()));
+    seen.extend(result.iter().map(|item| item.word.as_str()));
+    let duplicates = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| (!seen.insert(item.word.as_str())).then_some(index))
+        .collect::<Vec<_>>();
+    drop(seen);
+    let unique_count = rows.len() - duplicates.len();
+    result.reserve(unique_count);
+    let mut duplicates = duplicates.into_iter().peekable();
+    result.extend(rows.into_iter().enumerate().filter_map(|(index, item)| {
+        if duplicates.peek() == Some(&index) {
+            duplicates.next();
+            None
+        } else {
+            Some(item)
+        }
+    }));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::CandidateSource;
+
+    fn row(pinyin: &str, word: &str, weight: i64) -> WordItem {
+        WordItem::new(pinyin, word, weight, CandidateSource::Database, pinyin)
+    }
+
+    fn words(items: &[WordItem]) -> Vec<&str> {
+        items.iter().map(|item| item.word.as_str()).collect()
+    }
+
+    /// 词网格整句行：`typed` 是打的拼音，`canonical` 是这条切分的读音。
+    fn sentence(typed: &str, canonical: &str, word: &str) -> WordItem {
+        let mut item = WordItem::new(typed, word, 0, CandidateSource::Generated, canonical);
+        item.sentence_association = true;
+        item
+    }
+
+    /// 主切分 fan'gan 解了 9 条、备选切分 fang'an 解了 3 条，中间夹着词典行和前缀行。
+    fn pooled_rows() -> Vec<WordItem> {
+        let mut rows = vec![row("fan'gan", "反感", 900)];
+        rows.extend((1..=9).map(|n| sentence("fan'gan", "fan'gan", &format!("主{n}"))));
+        rows.extend((1..=3).map(|n| sentence("fang'an", "fang'an", &format!("备{n}"))));
+        rows.push(row("fan", "反", 800));
+        rows
+    }
+
+    #[test]
+    fn pooled_primary_readings_go_behind_the_other_segmentation() {
+        let mut rows = pooled_rows();
+        defer_pooled_sentences(&mut rows, "fangan", 6);
+        assert_eq!(
+            words(&rows),
+            [
+                "反感", "主1", "主2", "主3", "主4", "主5", "主6", "备1", "备2", "备3", "主7",
+                "主8", "主9", "反"
+            ]
+        );
+    }
+
+    #[test]
+    fn one_segmentation_or_no_extra_readings_stay_put() {
+        let mut single: Vec<WordItem> = (1..=9)
+            .map(|n| sentence("fan'gan", "fan'gan", &format!("主{n}")))
+            .collect();
+        let before = words(&single).join(",");
+        defer_pooled_sentences(&mut single, "fangan", 6);
+        assert_eq!(words(&single).join(","), before);
+
+        let mut rows = pooled_rows();
+        let before = words(&rows).join(",");
+        defer_pooled_sentences(&mut rows, "fangan", 9);
+        assert_eq!(words(&rows).join(","), before);
+    }
+
+    #[test]
+    fn corrected_and_partial_readings_keep_their_seats() {
+        let mut rows = pooled_rows();
+        // 纠错读出的整句和只读了前缀的整句不参与挪动。
+        rows[8].corrected_from = "fnagan".into();
+        rows.insert(2, sentence("fan", "fan", "帆"));
+        defer_pooled_sentences(&mut rows, "fangan", 6);
+        assert_eq!(
+            words(&rows),
+            [
+                "反感", "主1", "帆", "主2", "主3", "主4", "主5", "主6", "备1", "主8", "备2", "备3",
+                "主7", "主9", "反"
+            ]
+        );
+    }
+
+    #[test]
+    fn series_cache_key_carries_mask_and_delimiter_mode() {
+        assert_eq!(series_cache_key("nihao", "ni'hao", 0), "T0:A:ni'hao");
+        assert_eq!(series_cache_key("ni'hao", "ni'hao", 15), "T15:M:ni'hao");
+        assert_eq!(series_cache_key("xyz", "", 3), "T3:A:xyz");
+    }
+
+    #[test]
+    fn series_cache_key_can_add_correction_prefix_in_one_build() {
+        assert_eq!(
+            series_cache_key_with_prefix("gau", "gua", 3, true),
+            "C:T3:A:gua"
+        );
+        assert_eq!(
+            series_cache_key_with_prefix("gau", "gua", 3, false),
+            "T3:A:gua"
+        );
+    }
+
+    fn owned(segments: &[&str]) -> Vec<String> {
+        segments.iter().map(|segment| segment.to_string()).collect()
+    }
+
+    #[test]
+    fn resolution_splits_correction_cost_tiers() {
+        let both = autocorrect_type::TRANSPOSITION | autocorrect_type::NEIGHBOR;
+        // gua (transposition, 10) is strictly cheaper than gai (neighbor, 13), so the two land in different tiers whatever the dictionary says.
+        let gau = resolve_series_query("gau", &[], both);
+        assert!(gau.corrected_input);
+        assert_eq!(gau.corrected, owned(&["gua"]));
+        assert!(gau.costlier_corrected_cuts.contains(&owned(&["gai"])));
+        assert_eq!(gau.segmentation, "gua");
+        assert_eq!(gau.cache_key, "C:T3:A:gua");
+    }
+
+    #[test]
+    fn resolution_composes_a_corrected_head_with_a_jianpin_tail() {
+        let both = autocorrect_type::TRANSPOSITION | autocorrect_type::NEIGHBOR;
+        let hauzh = resolve_series_query("hauzh", &[], both);
+        assert_eq!(hauzh.corrected, owned(&["hua", "zh"]));
+        assert_eq!(hauzh.cache_key, "C:T3:A:hua'zh");
+    }
+
+    #[test]
+    fn resolution_leaves_legal_and_unmasked_input_alone() {
+        let segments = owned(&["ke", "neng"]);
+        let legal = resolve_series_query("keneng", &segments, 15);
+        assert!(!legal.corrected_input);
+        assert_eq!(legal.segmentation, "ke'neng");
+        assert_eq!(legal.cache_key, "T15:A:ke'neng");
+
+        let unmasked = resolve_series_query("sahng", &[], 0);
+        assert!(!unmasked.corrected_input);
+        assert_eq!(unmasked.segmentation, "sahng");
+        assert_eq!(unmasked.cache_key, "T0:A:sahng");
+
+        let manual = resolve_series_query("sa'hng", &owned(&["sa", "hng"]), 15);
+        assert!(!manual.corrected_input, "manual delimiters never take part");
+        assert_eq!(manual.cache_key, "T15:M:sa'hng");
+    }
+
+    #[test]
+    fn fold_keeps_v_distinct_from_u() {
+        let folded = fold_reading("Sa'Hng");
+        assert_eq!(folded, "sahng");
+        assert_eq!(folded.capacity(), folded.len());
+        assert_eq!(fold_reading("nve"), "nve");
+        assert_ne!(fold_reading("nve"), fold_reading("nue"));
+    }
+
+    #[test]
+    fn folded_reading_comparison_matches_owned_folding() {
+        for (left, right) in [("Sa'Hng", "sahng"), ("nve", "nue"), ("", "'")] {
+            assert_eq!(
+                folded_reading_equal(left, right),
+                fold_reading(left) == fold_reading(right),
+                "{left}/{right}"
+            );
+        }
+    }
+
+    #[test]
+    fn literal_abbreviation_phrases_move_ahead_in_their_own_order() {
+        let mut rows = vec![
+            row("zhe", "这", 900),
+            row("zh", "主", 800),
+            row("zh'r", "转让", 500),
+            row("zhe", "着", 400),
+            row("z'h'r", "这伙人", 40),
+            row("zh'r", "正如", 300),
+        ];
+        let mut sentence = row("zh'r", "主人公", 1);
+        sentence.sentence_association = true;
+        rows.push(sentence);
+        lead_literal_abbreviation_phrases(&mut rows, "zhr", 5);
+        assert_eq!(
+            words(&rows),
+            ["转让", "这伙人", "正如", "这", "主", "着", "主人公"]
+        );
+
+        // 带元音的输入和没有字面整词的输入都原样不动。
+        let original = vec![row("shang", "上", 100), row("sa'h'n'g", "撒谎那个", 1000)];
+        let mut vowel = original.clone();
+        lead_literal_abbreviation_phrases(&mut vowel, "sahng", 5);
+        assert_eq!(vowel, original);
+        let mut no_phrase = vec![row("shang", "上", 100), row("sh", "是", 90)];
+        lead_literal_abbreviation_phrases(&mut no_phrase, "shng", 5);
+        assert_eq!(words(&no_phrase), ["上", "是"]);
+    }
+
+    #[test]
+    fn the_leading_correction_keeps_the_last_first_page_seat() {
+        let mut rows = vec![row("zhe", "这", 900), row("zhe", "着", 800)];
+        for word in ["转让", "主人", "众人", "正如", "整容", "招人", "阵容"] {
+            rows.push(row("zh'r", word, 100));
+        }
+        rows.push(row("zh", "主", 50));
+        lead_literal_abbreviation_phrases(&mut rows, "zhr", 5);
+        assert_eq!(
+            words(&rows),
+            [
+                "转让", "主人", "众人", "正如", "整容", "这", "招人", "阵容", "着", "主"
+            ]
+        );
+
+        // 打头的是字面前缀行（纠错读法什么也没查到）时，没有要保座的纠错候选。
+        let mut literal_head = vec![row("zh", "主", 800)];
+        for word in ["转让", "主人", "众人"] {
+            literal_head.push(row("zh'r", word, 100));
+        }
+        lead_literal_abbreviation_phrases(&mut literal_head, "zhr", 1);
+        assert_eq!(words(&literal_head), ["转让", "主人", "众人", "主"]);
+    }
+
+    #[test]
+    fn marks_only_rows_whose_letters_equal_a_differing_cut() {
+        let mut items = vec![
+            row("shang", "上", 100),
+            row("sa'h'n'g", "撒谎那个", 1000),
+            row("sha", "沙", 10),
+        ];
+        mark_autocorrect_candidates(&mut items, "sahng", "shang", &[]);
+        assert_eq!(items[0].corrected_from, "sahng");
+        assert!(items[1].corrected_from.is_empty());
+        assert!(items[2].corrected_from.is_empty());
+    }
+
+    #[test]
+    fn marking_without_a_matching_candidate_does_not_allocate_folded_input() {
+        let mut items = vec![row("ke'neng", "可能", 100)];
+        let cuts = ["ke'neng".to_string()];
+        let ((), allocations) = crate::ime::personal_rerank::allocations::count(|| {
+            mark_autocorrect_candidates(&mut items, "keneng", "ke'neng", &cuts);
+        });
+
+        assert_eq!(allocations, 0);
+        assert!(items[0].corrected_from.is_empty());
+    }
+
+    #[test]
+    fn marking_exits_when_every_cut_spells_the_typed_letters() {
+        let mut items = vec![row("ke'neng", "可能", 100), row("ke", "可", 10)];
+        mark_autocorrect_candidates(&mut items, "keneng", "ke'neng", &[]);
+        assert!(items.iter().all(|item| item.corrected_from.is_empty()));
+    }
+
+    #[test]
+    fn umlaut_alias_rewrite_is_marked() {
+        // nue -> nve marks; a typed nve does not.
+        let mut typed_nue = vec![row("nve", "虐", 100)];
+        mark_autocorrect_candidates(&mut typed_nue, "nue", "nve", &[]);
+        assert_eq!(typed_nue[0].corrected_from, "nue");
+        let mut typed_nve = vec![row("nve", "虐", 100)];
+        mark_autocorrect_candidates(&mut typed_nve, "nve", "nve", &[]);
+        assert!(typed_nve[0].corrected_from.is_empty());
+    }
+
+    #[test]
+    fn marking_uses_alternative_cuts_and_keeps_existing_labels() {
+        let mut items = vec![row("zhan", "站", 100), row("shan", "山", 100)];
+        items[1].corrected_from = "earlier".into();
+        mark_autocorrect_candidates(&mut items, "ahan", "shan", &["zhan".to_string()]);
+        assert_eq!(items[0].corrected_from, "ahan");
+        assert_eq!(items[1].corrected_from, "earlier");
+    }
+
+    #[test]
+    fn alternative_best_is_promoted_only_from_beyond_the_first_page() {
+        // xian: 西安 sits at 16 on weight, beyond the first page, so it is lifted to index 1.
+        let primary: Vec<WordItem> = (0..16)
+            .map(|i| row("xian", &format!("先{i}"), 10_000 - i))
+            .collect();
+        let alternatives = vec![row("xi'an", "西安", 1_000)];
+        let merged = merge_alternative_segmentations(Vec::new(), primary.clone(), alternatives);
+        assert_eq!(merged[1].word, "西安");
+        assert_eq!(merged.len(), 17);
+
+        // tian: 天 田 提案, not 天 提案 田; a first-page alternative keeps its earned rank.
+        let primary = vec![row("tian", "天", 5_000), row("tian", "田", 3_000)];
+        let alternatives = vec![row("ti'an", "提案", 2_000)];
+        let merged = merge_alternative_segmentations(Vec::new(), primary, alternatives);
+        assert_eq!(words(&merged), ["天", "田", "提案"]);
+    }
+
+    #[test]
+    fn alternative_promotion_does_not_clone_a_unique_word() {
+        let primary: Vec<WordItem> = (0..16)
+            .map(|index| row("xian", &format!("先{index}"), 10_000 - index))
+            .collect();
+        let alternatives = vec![row("xi'an", "西安", 1_000)];
+        let (merged, allocations) = crate::ime::personal_rerank::allocations::count(|| {
+            merge_alternative_segmentations(Vec::new(), primary, alternatives)
+        });
+
+        assert_eq!(merged[1].word, "西安");
+        assert!(
+            allocations <= 1,
+            "唯一替代词归位不应复制词面：{allocations}"
+        );
+    }
+
+    #[test]
+    fn alternative_promotion_keeps_duplicate_word_semantics() {
+        let mut primary: Vec<WordItem> = (0..15)
+            .map(|index| row("xian", &format!("先{index}"), 10_000 - index))
+            .collect();
+        primary.push(row("xian", "西安", 2_000));
+        let alternatives = vec![row("xi'an", "西安", 1_000)];
+
+        let merged = merge_alternative_segmentations(Vec::new(), primary, alternatives);
+
+        assert_eq!(merged.len(), 16);
+        assert_eq!(merged[1].word, "西安");
+    }
+
+    #[test]
+    fn alternative_dedup_keeps_sorted_storage() {
+        let mut rows = vec![
+            row("xian", "甲", 3),
+            row("xi'an", "乙", 2),
+            row("xian", "甲", 1),
+        ];
+        let pointer = rows.as_ptr();
+
+        retain_unique_sorted_rows(&mut rows);
+
+        assert_eq!(rows.as_ptr(), pointer);
+        assert_eq!(words(&rows), ["甲", "乙"]);
+    }
+
+    #[test]
+    fn alternative_dedup_uses_no_heap_state_for_small_merges() {
+        let mut rows = (0..36)
+            .map(|index| row("xian", &format!("词{}", index % 18), 100 - index))
+            .collect::<Vec<_>>();
+
+        let ((), allocations) = crate::ime::personal_rerank::allocations::count(|| {
+            retain_unique_sorted_rows(&mut rows);
+        });
+
+        assert_eq!(allocations, 0);
+        assert_eq!(rows.len(), 18);
+    }
+
+    #[test]
+    fn rare_alternative_is_not_promoted() {
+        let primary: Vec<WordItem> = (0..10)
+            .map(|i| row("xie", &format!("写{i}"), 1_000_000 - i))
+            .collect();
+        let alternatives = vec![row("xi'e", "西鄂", 6)];
+        let merged = merge_alternative_segmentations(Vec::new(), primary, alternatives);
+        assert_eq!(merged.last().unwrap().word, "西鄂");
+    }
+
+    #[test]
+    fn merge_appends_the_whole_series_answer_after_the_union() {
+        let mut sentence = WordItem::new(
+            "ni'hao",
+            "泥豪",
+            -5_000,
+            CandidateSource::Generated,
+            "ni'hao",
+        );
+        sentence.sentence_association = true;
+        let result = vec![
+            row("ni'hao", "你好", 10_000),
+            sentence,
+            row("ni", "你", 8_000),
+        ];
+        let merged = merge_alternative_segmentations(
+            result,
+            vec![row("ni'hao", "你好", 10_000)],
+            vec![row("ni'ha'o", "拟哈哦", 20)],
+        );
+        assert_eq!(words(&merged), ["你好", "拟哈哦", "泥豪", "你"]);
+        assert_eq!(
+            merged[1].pinyin, "ni'ha'o",
+            "an alternative row answers under its own key"
+        );
+    }
+
+    #[test]
+    fn merge_without_alternatives_returns_the_answer_unchanged() {
+        let result = vec![row("a", "啊", 1)];
+        assert_eq!(
+            merge_alternative_segmentations(result.clone(), Vec::new(), Vec::new()),
+            result
+        );
+    }
+
+    #[test]
+    fn append_unique_words_dedups_against_the_growing_list() {
+        let mut result = vec![row("a", "啊", 1)];
+        append_unique_words(
+            &mut result,
+            vec![row("a", "啊", 2), row("a", "阿", 3), row("a", "阿", 4)],
+        );
+        assert_eq!(words(&result), ["啊", "阿"]);
+        assert_eq!(result[1].weight, 3);
+    }
+
+    #[test]
+    fn append_unique_words_reserves_the_incoming_rows() {
+        let mut result = Vec::with_capacity(1);
+        result.push(row("a", "啊", 1));
+        let rows: Vec<WordItem> = (0..10)
+            .map(|index| row("a", &format!("词{index}"), index))
+            .collect();
+
+        append_unique_words(&mut result, rows);
+
+        assert_eq!(result.len(), 11);
+        assert_eq!(result.capacity(), 11);
+    }
+
+    #[test]
+    fn append_unique_words_reserves_only_unique_incoming_rows() {
+        let mut result = Vec::with_capacity(1);
+        result.push(row("a", "已有", 1));
+        let rows = (0..100).map(|index| row("a", "新增", index)).collect();
+
+        append_unique_words(&mut result, rows);
+
+        assert_eq!(words(&result), ["已有", "新增"]);
+        // `Vec` 会为极小的增长保留实现规定的最小余量，但不应按 100 行输入扩容。
+        assert!(result.capacity() <= 4);
+    }
+
+    #[test]
+    fn append_unique_words_uses_no_temporary_heap_state_for_small_merges() {
+        let mut result = Vec::with_capacity(37);
+        result.push(row("a", "已有", 1));
+        let rows: Vec<WordItem> = (0..36)
+            .map(|index| row("a", &format!("词{}", index % 18), index))
+            .collect();
+
+        let ((), allocations) = crate::ime::personal_rerank::allocations::count(|| {
+            append_unique_words(&mut result, rows);
+        });
+
+        assert_eq!(allocations, 0);
+        assert_eq!(result.len(), 19);
+    }
+
+    #[test]
+    fn append_unique_words_leaves_the_result_unchanged_for_empty_rows() {
+        let mut result = Vec::with_capacity(4);
+        result.push(row("a", "啊", 1));
+        let capacity = result.capacity();
+
+        append_unique_words(&mut result, Vec::new());
+
+        assert_eq!(words(&result), ["啊"]);
+        assert_eq!(result.capacity(), capacity);
+    }
+}

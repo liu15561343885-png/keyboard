@@ -1,0 +1,48 @@
+[package]
+name = "msime-client-core"
+description = "Host-agnostic client core: local preferences and generational installation of pinned resources."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+msime-client-base = { path = "../client-base" }
+msime-path-trust = { path = "../path-trust" }
+serde.workspace = true
+serde_json.workspace = true
+serde_ignored.workspace = true
+thiserror.workspace = true
+tempfile.workspace = true
+unicode-segmentation.workspace = true
+sha2.workspace = true
+hmac = "0.13"
+# 云剪贴板端到端加密（`cloud::clipboard_e2e`）：条目与密钥封装用 XChaCha20-Poly1305，设备密钥对用 X25519，子密钥用 HKDF-SHA256。三者与已有的 `chacha20 0.10`、`rand_core 0.10`、`hmac 0.13` 同属一代 RustCrypto/dalek，不另引入一套底层实现；随机数直接取自系统的 `getrandom`。
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"] }
+x25519-dalek = { version = "3", default-features = false, features = ["static_secrets", "zeroize"] }
+hkdf = "0.13"
+getrandom = "0.4"
+hex = "0.4"
+md-5 = "0.11"
+base64 = "0.23"
+uuid = { workspace = true, features = ["serde", "v4"] }
+# 只用来取当前 UTC 时间、拼损坏备份的文件名，不需要 `formatting`：命令表插件包的 strftime 校验已随插件搬到 msime-client-services，那边自己开着。
+time.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+jiff = { version = "0.2.35", default-features = false, features = ["std", "tzdb-bundle-always"] }
+sunrise = "3.0.0"
+# 偏好、翻译和地址形状校验只解析地址、不联网，直接用 `url`，不经 `reqwest::Url`。锁文件里只有一份 url 2.5.8，和 reqwest 用的是同一个类型。
+url = "2.5"
+
+[dev-dependencies]
+msime-client-base = { path = "../client-base", features = ["test-support"] }
+msime-path-trust = { path = "../path-trust", features = ["test-support"] }
+# `examples/install_resources.rs` 用阻塞的 HTTP 客户端下载钉住的资源；库本身不联网，所以只在 dev-dependencies 里。规格与 msime-client-services 的那份相同。
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true, features = ["fs"] }
+
+[lints]
+workspace = true

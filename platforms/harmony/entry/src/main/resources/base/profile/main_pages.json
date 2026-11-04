@@ -1,0 +1,8 @@
+{
+  "src": [
+    "keyboard/KeyboardView",
+    "pages/Settings",
+    "keyboard/InputModeHud",
+    "keyboard/FloatingToolbar"
+  ]
+}

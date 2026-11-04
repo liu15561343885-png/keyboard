@@ -1,0 +1,1058 @@
+name: Native Platform CI
+
+# Native-host gates for the four platforms that do not use the Apple runners.
+# Release workflows remain separate; this workflow only builds and tests.
+#
+# No paths-ignore on purpose: "Android host" is a required check on main and develop, and a workflow skipped by path filtering never reports it, so a documentation-only pull request would sit in "Expected" forever (the trap ci-docs.yml describes). Every job already starts unconditionally and the changes job routes a documentation-only change to each job's "platform unchanged" step, which takes seconds.
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+  workflow_dispatch:
+  merge_group:
+
+concurrency:
+  group: platform-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Decide platform scope
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      android: ${{ steps.decide.outputs.android }}
+      linux: ${{ steps.decide.outputs.linux }}
+      harmonyos: ${{ steps.decide.outputs.harmonyos }}
+      windows: ${{ steps.decide.outputs.windows }}
+      web: ${{ steps.decide.outputs.web }}
+      engine: ${{ steps.decide.outputs.engine }}
+      engine_capi: ${{ steps.decide.outputs.engine_capi }}
+      ui: ${{ steps.decide.outputs.ui }}
+      plugins: ${{ steps.decide.outputs.plugins }}
+      android_device: ${{ steps.decide.outputs.android_device }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: decide
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != push && "$GITHUB_EVENT_NAME" != pull_request ]] ||
+             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$BASE_SHA" 2>/dev/null || ! git cat-file -e "$HEAD_SHA" 2>/dev/null; then
+            printf 'android=true\nlinux=true\nharmonyos=true\nwindows=true\nweb=true\nengine=true\nengine_capi=true\nui=true\nplugins=true\nandroid_device=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # PR 合并或关闭后合并引用被删，签出拿不到 head 提交，下面三个点的 diff 会直接报错（2026-10-02 #3118 合并 13 秒后才开跑的 iOS CI 就红在这里）。PR 已经不在了，不必构建。
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]] && ! git cat-file -e "$HEAD_SHA^{commit}" 2>/dev/null; then
+            printf 'android=false\nlinux=false\nharmonyos=false\nwindows=false\nweb=false\nengine=false\nengine_capi=false\nui=false\nplugins=false\nandroid_device=false\n' >> "$GITHUB_OUTPUT"; echo "PR 的 head 提交已取不到（PR 已关闭），跳过。"; exit 0
+          fi
+          # PR 要比的是它自己从分叉点起改了什么（三个点）。base.sha 是事件发生时目标分支的最新提交，PR 分支往往从更早的 develop 切出；两个点的 diff 比的是两棵树，会把分叉之后 develop 合进来的改动也算成本 PR 的，于是只改一个 workflow 的 PR 也被判成要编译全部平台（2026-10-02 #2902）。push 的 BASE_SHA 是推送前的提交，两个点正好是这次推送带来的改动。
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          else
+            changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          fi
+          shared=false; ui=false; plugins=false; android_device=false; engine_capi=false
+          android=false; linux=false; harmonyos=false; windows=false; web=false
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            # 共享设置界面的测试只看界面代码和它的依赖清单，不看 Tauri 原生宿主、Rust 和平台目录。
+            case "$path" in
+              packages/ui/*|apps/desktop/src/*|apps/desktop/tests/*|apps/desktop/index.html|apps/desktop/package.json|apps/desktop/tsconfig.json|apps/desktop/vite.config.ts|apps/desktop/app-icon.svg|apps/harmony/src/*|apps/harmony/index.html|apps/harmony/package.json|apps/harmony/tsconfig.json|apps/harmony/vite.config.ts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.nvmrc|.github/workflows/ci-platforms.yml)
+                ui=true ;;
+            esac
+            # 脚本插件合集：插件本身、它们依赖的 SDK（crates/script-sdk）与模板、运行它们的沙箱和 msime-pack、几个脚本，以及插件包逐字节复制的 Unicode 许可证和常用字集生成器读的 Unihan 锁。plugins/ 和 docs/ 不在下面任何一条里，没有这一条时只改插件的 PR 什么都不跑；那两个 resources/ 文件在下面只触发 web 或什么都不触发，改了它们包就过期了。
+            # PR 上的设备验收只看键盘与设置界面的 Java、资源、清单、版本资源和设备套件本身：改了界面文字或交互却只在合并后才跑设备验收，nightly 就会在合并后才红（2026-10-27 #9924 改了皮肤卡片读屏文字，验收找不到旧文字）。共享 Rust 的改动太多，不在这里触发，仍由合并后的 push 和 nightly 兜底。
+            case "$path" in
+              platforms/android/java/*|platforms/android/res/*|platforms/android/AndroidManifest.xml|platforms/android/editions/*|platforms/android/tests/device/*|.github/workflows/android-device.yml)
+                android_device=true ;;
+            esac
+            case "$path" in
+              plugins/*|docs/script-plugin-template/*|crates/script-sdk/*|crates/script-runtime/*|crates/pack-tool/*|scripts/build-script-plugins.sh|scripts/test-script-plugins.sh|scripts/test-script-plugin-data.py|scripts/build-official-plugins.sh|resources/licenses/Unicode-License-V3.txt|resources/character-glosses.lock.json)
+                plugins=true ;;
+            esac
+            # 引擎的 C 接口（crates/engine-capi）只在引擎、它依赖的 path-trust、它自己、工作区清单与工具链、它用的声明收集脚本或本 workflow 变了时才编，见下面的 engine-capi 作业。
+            case "$path" in
+              crates/engine*|crates/path-trust/*|Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*|platforms/linux/collect-notices.py|.github/workflows/ci-platforms.yml)
+                engine_capi=true ;;
+            esac
+            case "$path" in
+              platforms/android/*) android=true ;;
+              # 精简 ONNX Runtime 的锁：Android 的 host 库（build-native.sh 开着 onnx-rerank，设备作业和发版构建）和 Linux 的 package-container.sh 都按它下载、静态链接，改了要两边重编。case 只走第一条匹配，所以两个平台写在同一条里。
+              resources/onnxruntime-minimal.lock.json) android=true; linux=true ;;
+              # package-container.sh 按这两份锁取精简 ONNX Runtime 链进宿主库、取两档逐键重排模型，下面的 Fedora 作业就跑它。
+              platforms/linux/*|resources/rerank-model.lock.json) linux=true ;;
+              platforms/harmony/*) harmonyos=true ;;
+              platforms/windows/*) windows=true ;;
+              # Telemetry is compiled by the Linux and Windows hosts and DictionaryQuiesceLease.h by Linux and macOS; Android and HarmonyOS build neither, so this is not a shared path. ci-macos.yml covers the macOS side.
+              platforms/common/*) linux=true; windows=true ;;
+              # 网页引擎只给浏览器用，四个原生宿主都不链接它，所以这几条路径只触发 web-engine 作业，排在下面的共享路径之前。
+              crates/engine-wasm/*|packages/web-engine/*|scripts/build-web-engine.sh|scripts/web-engine-notice.sh|resources/licenses/web-engine-NOTICE.md)
+                web=true ;;
+              # web-engine-NOTICE.md 逐字复制这几份许可证与来源说明（见 scripts/web-engine-notice.sh 的 repo 段），改了它们却不重新生成，NOTICE 就过期了；#6696 只改 LICENSE，没有任何作业被触发，过期的 NOTICE 进了 develop。引擎的 crates/engine/LICENSE 也在 repo 段里，它落在下面的 crates/*，共享路径本来就带上 web 作业。
+              LICENSE|resources/licenses/*|resources/helpcodes/ENGINE-NOTICE.md|resources/helpcodes/NOTICE.md|plugins/phrase_table/LICENSE)
+                web=true ;;
+              # 拆字表和符号模式的分组表编进每个平台的引擎，它们的锁变了，提交的表就过期了。
+              shared/*|crates/*|packages/*|apps/*|scripts/*|.github/workflows/ci-platforms.yml|resources/chaizi.lock.json|resources/character-glosses.lock.json|resources/opencc.lock.json|resources/symbol-groups.lock.json)
+                shared=true ;;
+              # The workspace manifests, the toolchain pin and the JS workspace: a Dependabot bump touches only these.
+              Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.nvmrc)
+                shared=true ;;
+            esac
+          done <<< "$changed"
+          if [[ "$shared" == true ]]; then
+            android=true; linux=true; harmonyos=true; windows=true; web=true; plugins=true
+          fi
+          # 引擎作业跟着共享路径走（crates/、工作区清单、工具链等），只改平台目录时不跑。
+          printf 'android=%s\nlinux=%s\nharmonyos=%s\nwindows=%s\nweb=%s\nengine=%s\nengine_capi=%s\nui=%s\nplugins=%s\nandroid_device=%s\n' \
+            "$android" "$linux" "$harmonyos" "$windows" "$web" "$shared" "$engine_capi" "$ui" "$plugins" "$android_device" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: changes
+    name: Android host
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install ripgrep
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ripgrep
+      # check-host.sh 在装有固定 NDK 时才把 client_jni.cpp 编译到 Android 目标上，核对 Java 的 native 声明和共享 FFI 签名一致；缺 NDK 时这一步会跳过。ubuntu-24.04 镜像 20261002 起不再预装 28.2.13676358，这里缓存并按需安装，免得这项检查悄悄失效。
+      # Depot 的 ubuntu 镜像预装了 28.2.13676358，目录归 root：照旧恢复缓存会先下载 651 MB，再在解压时撞上几百个 Cannot utime: Operation not permitted，最后按未命中处理。镜像里已经有这个版本时就不碰缓存，GitHub 的 ubuntu-24.04 上照旧恢复。
+      - name: Check for a preinstalled Android NDK
+        id: ndk
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        run: |
+          if grep -qs '28.2.13676358' /usr/local/lib/android/sdk/ndk/28.2.13676358/source.properties; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Restore the pinned Android NDK
+        if: ${{ needs.changes.outputs.android == 'true' && steps.ndk.outputs.present != 'true' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+      - name: Install the pinned Android NDK
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+          if ! grep -qs '28.2.13676358' "$ndk/source.properties"; then
+            # sdkmanager 退出后 yes 再写会收到 SIGPIPE（退出码 141），在 pipefail 下让整步失败；它的退出码不算数，装没装上由下一行的版本核对判断。
+            { yes || true; } | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install 'ndk;28.2.13676358' >/dev/null
+          fi
+          grep -q '28.2.13676358' "$ndk/source.properties"
+      - name: Check Android host contracts and JVM smoke tests
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: bash platforms/android/check-host.sh
+      # check-host.sh 的 javac 不编译 home/（那里用到 Gradle 生成的 R），于是一个只动了 home/ import 的重构能通过这里的全部检查，却在发版时让 Gradle 编译失败：2026-10-06 的 Release Android 就是这样整轮失败的。这里用发版同一个 Gradle 工程只编译各版本的 Java，不需要原生库和词库。
+      - name: Compile Android host Java for every edition
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: >-
+          platforms/android/gradle-app/gradlew --project-dir platforms/android/gradle-app --console=plain
+          compileFullReleaseJavaWithJavac compilePinyinReleaseJavaWithJavac compileWubiReleaseJavaWithJavac
+          compileJapaneseReleaseJavaWithJavac compileVietnameseReleaseJavaWithJavac compileTibetanReleaseJavaWithJavac
+      # 编译通过不代表能在 minSdk 的设备上运行：javac 按 compileSdk 解析，0.2.0 调用的 Path.of 要 API 34，Android 9 到 12 上准备词库直接 NoSuchMethodError。lint 在 gradle-app 里只开了 NewApi，这一步专门拦高于 minSdk 的调用。
+      - name: Check Android API levels against minSdk
+        if: ${{ needs.changes.outputs.android == 'true' }}
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: platforms/android/gradle-app/gradlew --project-dir platforms/android/gradle-app --console=plain lintFullRelease
+      - name: Android platform unchanged
+        if: ${{ needs.changes.outputs.android != 'true' }}
+        run: echo 'No Android or shared-platform changes; platform gate skipped.'
+  # 上面只证明编译得过；这里在 API 28 和 35 的模拟器上真正运行 client-base、client-core、client-providers、client-services 单测和 APK。0.3.0 的三个设备上才出现的问题（词库准备失败、匿名账号写不进、Android 9 启动崩溃）全过了上面那个 job。
+  # 合进 develop 后的 push 在 API 28 和 35 上跑整套，Release Android 发版前用同一个提交再跑一次（见 .agents/notes/implemented/process/2026-10-09-no-packaging-on-pull-requests.md）。
+  android-device:
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' && github.event_name != 'pull_request' }}
+    uses: ./.github/workflows/android-device.yml
+
+  # PR 改了键盘、设置界面或崩溃设备套件时，API 28 先跑独立 crash-only，API 35 跑独立崩溃门禁后再跑完整输入验收，让 minSdk 的 Java/JNI 现场链路和高版本的完整交互都能在合并前看到；API 28 的完整输入和全套仍在合并后的 push 与 nightly 上跑（见 .agents/notes/implemented/process/2026-10-28-android-device-on-ui-prs.md）。这两个 PR 设备作业都不是必需检查，失败不挡合并。
+  android-device-pr:
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.android_device == 'true' }}
+    uses: ./.github/workflows/android-device.yml
+    with:
+      matrix: '[{"api": 28, "smoke": "--crash-only"}, {"api": 35, "smoke": ""}]'
+
+  linux:
+    needs: changes
+    name: Linux native host
+    runs-on: depot-ubuntu-24.04-8
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build IBus and Fcitx5 hosts in the pinned container
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: bash platforms/linux/build-container.sh
+      - name: Linux platform unchanged
+        if: ${{ needs.changes.outputs.linux != 'true' }}
+        run: echo 'No Linux or shared-platform changes; platform gate skipped.'
+
+  linux-resource-integration:
+    needs: changes
+    name: Linux native host resource integration
+    runs-on: depot-ubuntu-24.04-8
+    timeout-minutes: 45
+    env:
+      MSIME_SKIP_RUST_TESTS: '1'
+      MSIME_RESOURCE_SMOKE_ONLY: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the locked desktop resources
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p target/linux-resources
+          resource_dir="$(cargo run --quiet --locked -p msime-client-core --example install_resources -- target/linux-resources | tail -n 1)"
+          test -d "$resource_dir"
+          printf '%s\n' "$resource_dir" > target/linux-resources/path
+      - name: Run IBus resource acceptance
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: bash platforms/linux/tests/tools/check-container.sh "$(cat target/linux-resources/path)"
+      - name: Run Fcitx5 resource acceptance
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: bash platforms/linux/tests/tools/check-container.sh "$(cat target/linux-resources/path)" --fcitx5
+      - name: Linux platform unchanged
+        if: ${{ needs.changes.outputs.linux != 'true' }}
+        run: echo 'No Linux or shared-platform changes; platform gate skipped.'
+
+  # 上面的门禁只在 Debian bookworm 容器里编 Debug、跑 ctest；发版的 .rpm 在 Fedora 44 容器里以 Release 编、再跑一遍同一套 ctest（release-linux.yml 的 rpm 作业），Fedora 的 Pango、字体和编译器不同，有的测试只在那里失败：2026-10-27 的 nightly 就红在 linux-candidate-native-canvas-chrome，PR 上从来看不到。这里在 PR 上用同一个镜像、同一份 package-container.sh 编 full 版并跑 ctest，MSIME_PACKAGE_TESTS_ONLY=1 让它停在 ctest，不出包、不编桌面二进制，不违反「PR 上不打包」（.agents/notes/implemented/process/2026-10-09-no-packaging-on-pull-requests.md）。
+  linux-fedora:
+    needs: changes
+    name: Linux native host (Fedora)
+    runs-on: depot-ubuntu-24.04-8
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and test the native hosts in the Fedora packaging container
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        env:
+          MSIME_PACKAGE_FORMAT: rpm
+          MSIME_PACKAGE_TESTS_ONLY: '1'
+        run: bash platforms/linux/package-container.sh
+      - name: Linux platform unchanged
+        if: ${{ needs.changes.outputs.linux != 'true' }}
+        run: echo 'No Linux or shared-platform changes; platform gate skipped.'
+
+  # 上面的容器构建只测 core 几个 crate，设置应用（msime-desktop）在 Linux 上没有任何地方编译过：首次配置页 linux_setup.rs 的测试从未在 CI 里跑过，Linux 专属的 clippy 警告也攒到了几十条。这里补上它的 clippy 和全部单元测试。
+  linux-desktop:
+    needs: changes
+    name: Linux settings app
+    runs-on: depot-ubuntu-24.04-8
+    timeout-minutes: 45
+    env:
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Depot 的 runner 启动时已把 SCCACHE_WEBDAV_ENDPOINT 指向 Depot Cache，rustc 的产物跨运行缓存，不需要 token。缓存只为加速：sccache 装不上或服务起不来时（Depot Cache 一时连不上，#9658 的 Web engine 就这样在 cargo 第一步退出）照常不带缓存编译，只有服务真正启动了，「Enable sccache」才把 RUSTC_WRAPPER 写进环境；SCCACHE_IGNORE_SERVER_IO_ERROR=1 让构建途中服务出错时退回直接编译。CARGO_INCREMENTAL=0 是因为 sccache 不缓存增量编译。
+      - name: Install sccache
+        id: sccache
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        continue-on-error: true
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - name: Enable sccache
+        if: ${{ needs.changes.outputs.linux == 'true' && steps.sccache.outcome == 'success' }}
+        shell: bash
+        run: |
+          if sccache --start-server; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "::warning::sccache did not start; the Rust build runs without the compile cache"
+          fi
+      - name: Install the Tauri build dependencies
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libasound2-dev libssl-dev libxkbcommon-dev libayatana-appindicator3-dev librsvg2-dev libibus-1.0-dev pkgconf
+          # Installs the toolchain rust-toolchain.toml pins, with its clippy component.
+          rustup toolchain install
+      # Tauri 的构建脚本要求 frontendDist 目录存在；单元测试用不到页面，放一个空页面即可，省掉 pnpm 构建。msime-mcp-server 的测试（含崩溃采集的同意生命周期和 stdio 集成测试）在别的作业里只编不跑，放在这里一起跑。
+      - name: Clippy and unit tests for msime-desktop and msime-mcp-server
+        if: ${{ needs.changes.outputs.linux == 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p apps/desktop/dist
+          [ -e apps/desktop/dist/index.html ] || : > apps/desktop/dist/index.html
+          cargo clippy --locked -p msime-desktop --all-targets -- -D warnings
+          cargo test --locked -p msime-desktop
+          cargo clippy --locked -p msime-mcp-server --all-targets -- -D warnings
+          cargo test --locked -p msime-mcp-server
+          # 复用已构建的 Rust 依赖，检查共享 UI 的静态语音目录没有漂移。
+          cargo run --quiet --locked -p msime-client-providers --example export_voice_provider_catalog -- --check
+          cargo run --quiet --locked -p msime-client-providers --example export_polish_prompt_catalog -- --check
+          cargo run --quiet --locked -p msime-client-providers --example export_ai_provider_catalog -- --check
+      - name: Linux platform unchanged
+        if: ${{ needs.changes.outputs.linux != 'true' }}
+        run: echo 'No Linux or shared-platform changes; platform gate skipped.'
+
+  # msime-engine 的单元测试和 golden 基准此前没有任何 CI 作业运行：上面的 Linux 容器只测 client-base、client-core、client-providers、client-services、input-runtime 和 host-api，提交前的 `verify-local.sh --quick` 不跑 Rust 测试，只有很少有人跑的全量 `verify-local.sh` 才跑。引擎里钉死精确次数的分配预算测试因此在 develop 上红了好几个 PR 都没人发现（见 .agents/notes/implemented/testing/2026-10-10-engine-tests-in-ci.md）。这里以 runner 的普通用户运行；整句模型不在仓库里，依赖它的测试会自行跳过并说明原因。
+  engine:
+    needs: changes
+    name: Rust engine
+    runs-on: depot-ubuntu-24.04-8
+    timeout-minutes: 30
+    env:
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install sccache
+        id: sccache
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        continue-on-error: true
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - name: Enable sccache
+        if: ${{ needs.changes.outputs.engine == 'true' && steps.sccache.outcome == 'success' }}
+        shell: bash
+        run: |
+          if sccache --start-server; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "::warning::sccache did not start; the Rust build runs without the compile cache"
+          fi
+      # 拆字表（crates/engine/src/local/chaizi*.tsv）由生成器从锁定的 kfcd/chaizi 和 Unihan 生成并提交。MSIME_FETCH=1 让契约检查在缓存里没有输入时按锁下载并逐字节核对，而不是打印 skip；输入按两份锁的摘要缓存，锁不变就不重新下载。
+      - name: Restore the pinned chaizi sources
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/chaizi-cache
+          key: chaizi-sources-${{ hashFiles('resources/chaizi.lock.json', 'resources/character-glosses.lock.json') }}
+      - name: Chaizi tables match the generator
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        env:
+          MSIME_FETCH: '1'
+        run: python3 scripts/test-chaizi-table.py
+      # 符号模式的分组表（crates/engine/src/local/symbol_groups.tsv）由生成器从锁定版本的 Unicode 字符数据库生成并提交，做法与上面的拆字表相同：按锁下载、按锁的摘要缓存，再逐字节核对。
+      - name: Restore the pinned Unicode Character Database files
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/symbol-groups-cache
+          key: symbol-groups-sources-${{ hashFiles('resources/symbol-groups.lock.json') }}
+      - name: Symbol groups table matches the generator
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        env:
+          MSIME_FETCH: '1'
+        run: python3 scripts/test-symbol-groups.py
+      - name: Unit and golden tests for msime-engine
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        run: |
+          set -euo pipefail
+          # 安装 rust-toolchain.toml 钉住的工具链。
+          rustup toolchain install
+          cargo test --locked -p msime-engine
+      # msime 自己经 path 依赖用引擎的源码，crates.io 上的采用方拿到的是按 include 白名单打出来的包；新加的数据文件漏进白名单、或者 README 里的路径在包里不存在，我们这边照常编过，只有下载包的人编不过。所以每个改了引擎的 PR 都把三个发布的 crate 按发布时的方式打包，并在打包后的源码上各编一遍。用 cargo package 不用 cargo publish --dry-run：后者遇到 crates.io 上已有的版本会失败，而版本号只在发版时才改。
+      - name: Published crates build from their packages
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        run: cargo package --locked -p msime-path-trust -p msime-engine -p msime-engine-capi
+      # 三个发布到 crates.io 的 crate 的文档由 docs.rs 渲染，坏掉的 intra-doc 链接在那里就是点不开的链接或原样的方括号，而 cargo test 和 clippy 都不跑 rustdoc 的检查，此前积下的 10 个警告（链到私有项、没转义的方括号、裸 URL）就是这样一直没人发现。所以按 docs.rs 的方式只给这三个 crate 生成文档，并把 rustdoc 的警告当错误。链到私有项的那类警告只在不加 --document-private-items 时出现，这里也不加，和 docs.rs 一致。
+      - name: Published crates document without rustdoc warnings
+        if: ${{ needs.changes.outputs.engine == 'true' }}
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps --locked -p msime-path-trust -p msime-engine -p msime-engine-capi
+      - name: Engine unchanged
+        if: ${{ needs.changes.outputs.engine != 'true' }}
+        run: echo 'No engine or shared changes; engine tests skipped.'
+
+  # 引擎的 C 接口（crates/engine-capi）：在三个桌面平台上跑 ABI 测试，用 cargo-c 装出库、头文件和 .pc，核对提交的头文件没有漂移、共享库按 ABI 主版本命名、第三方声明按它的依赖图生成得出来，再把 C 示例按动态库和静态库各编一遍、在夹具词库上打字选词上屏（`crates/engine-capi/tests/c-example.sh`，README 的「构建」一节）。这个检查不是必需检查，所以按路径在作业级跳过：macOS runner 只有几台，不为不相干的改动占一台。
+  engine-capi:
+    needs: changes
+    if: ${{ needs.changes.outputs.engine_capi == 'true' }}
+    name: Engine C ABI (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: depot-ubuntu-24.04-8
+          - name: macOS
+            runner: depot-macos-26
+          - name: Windows
+            runner: depot-windows-2025-8
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_C_VERSION: 0.10.26
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install sccache
+        id: sccache
+        continue-on-error: true
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - name: Enable sccache
+        if: ${{ steps.sccache.outcome == 'success' }}
+        run: |
+          if sccache --start-server; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "::warning::sccache did not start; the Rust build runs without the compile cache"
+          fi
+      - name: Install system packages (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends cmake pkg-config libsqlite3-dev
+      # cargo-c 从源码编要几分钟，按版本和系统缓存装好的几个可执行文件。
+      - name: Restore cargo-c
+        id: cargo-c
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/bin/cargo-capi*
+            ~/.cargo/bin/cargo-cbuild*
+            ~/.cargo/bin/cargo-cinstall*
+            ~/.cargo/bin/cargo-ctest*
+          key: cargo-c-${{ env.CARGO_C_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
+      - name: Install the pinned toolchain and cargo-c
+        run: |
+          set -euo pipefail
+          # 安装 rust-toolchain.toml 钉住的工具链。
+          rustup toolchain install
+          # 问 cargo 而不是 PATH：缓存还原的可执行文件在 ~/.cargo/bin，Windows 的 Git Bash 里它可能不在 PATH 上，cargo 照样找得到子命令。缓存不还原 cargo 的安装记录，所以重装时要 --force 覆盖这些文件。
+          if ! cargo cinstall --version 2>/dev/null | grep -q "^cargo-c $CARGO_C_VERSION"; then
+            cargo install cargo-c --locked --force --version "$CARGO_C_VERSION"
+          fi
+      - name: ABI tests
+        run: cargo test --locked -p msime-engine-capi
+      - name: Build the C library and run the C example
+        run: bash crates/engine-capi/tests/c-example.sh
+
+  # plugins/script/ 下的脚本插件：编成 wasm、用 msime-pack 校验，按各自的夹具运行并和 expected.jsonl 核对（scripts/test-script-plugins.sh）。插件 crate 没有依赖，几秒就编完，时间主要花在 msime-pack 上，所以和别的 Rust 作业一样走 sccache。MSIME_REQUIRE_SCRIPT_PLUGINS=1 让缺 wasm 目标时失败，而不是像本机那样跳过。MSIME_FETCH=1 让 gen_common_chars.py --check 在缓存里没有 Unihan zip 时下载它（按锁校验大小和 sha256），而不是打印 skip：不这样的话 CI 从来不核对 common-chars.bin，手改或过期的字表照样通过。zip 按锁的摘要缓存，锁不变就不重新下载。
+  script-plugins:
+    needs: changes
+    name: Script plugins
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install sccache
+        id: sccache
+        if: ${{ needs.changes.outputs.plugins == 'true' }}
+        continue-on-error: true
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - name: Enable sccache
+        if: ${{ needs.changes.outputs.plugins == 'true' && steps.sccache.outcome == 'success' }}
+        shell: bash
+        run: |
+          if sccache --start-server; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "::warning::sccache did not start; the Rust build runs without the compile cache"
+          fi
+      - name: Restore the pinned Unihan zip
+        if: ${{ needs.changes.outputs.plugins == 'true' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/script-plugins/cache
+          key: script-plugins-unihan-${{ hashFiles('resources/character-glosses.lock.json') }}
+      - name: Build and test the script plugins
+        if: ${{ needs.changes.outputs.plugins == 'true' }}
+        env:
+          MSIME_REQUIRE_SCRIPT_PLUGINS: '1'
+          MSIME_FETCH: '1'
+        run: |
+          set -euo pipefail
+          # 安装 rust-toolchain.toml 钉住的工具链，再给它加上 wasm 目标。
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+          cargo test --locked -p msime-script-runtime
+          # SDK 之外，命令行退出码、包校验和事件夹具也有独立集成测试。
+          cargo test --locked -p msime-pack-tool
+          bash scripts/test-script-plugins.sh
+          # 随桌面安装包分发的官方插件包：重新构建，核对 latex-symbols 的生成器没有漂移、每个包过 msime-pack validate --builtin、uuid 的内容哈希等于 plugins/official-packs.json 锁定的值。锁以这台 ubuntu 的构建为准，和发版工作流的 official-plugins 作业相同；工具链或插件源码一变哈希就变，所有用户的授权随之作废，这一步让它在 PR 里变红、在 diff 里看得见。
+          bash scripts/build-official-plugins.sh --check
+      - name: Script plugins unchanged
+        if: ${{ needs.changes.outputs.plugins != 'true' }}
+        run: echo 'No script plugin, SDK, runtime or shared changes; script plugin tests skipped.'
+
+  harmonyos:
+    needs: changes
+    name: HarmonyOS host
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The settings page below is built with the same toolchain contributors and the release build run; the runner's default Node is not pinned to anything.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.harmonyos == 'true' }}
+        with:
+          node-version-file: .nvmrc
+      - name: Install Node dependencies
+        if: ${{ needs.changes.outputs.harmonyos == 'true' }}
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Type-check and run Harmony keyboard logic tests
+        if: ${{ needs.changes.outputs.harmonyos == 'true' }}
+        run: bash platforms/harmony/tests/run.sh
+      # The settings window is a WebView over a page built from packages/ui by platforms/harmony/stage-settings.sh before every HAP build. It used to be committed, and every shared-UI pull request then conflicted on it; this checks it stays uncommitted and still builds into the one file the WebView can read. This job already runs for every shared-UI change and already has pnpm, which is all the check needs.
+      - name: Check the settings page builds and is not committed
+        if: ${{ needs.changes.outputs.harmonyos == 'true' }}
+        run: python3 scripts/test-harmony-settings-bundle.py
+      - name: HarmonyOS platform unchanged
+        if: ${{ needs.changes.outputs.harmonyos != 'true' }}
+        run: echo 'No HarmonyOS or shared-platform changes; platform gate skipped.'
+
+  # 共享设置界面（packages/ui，鸿蒙、各平台的设置窗口都画它）的 lint、类型检查和 vitest。之前没有任何门禁跑 vitest：推送前钩子跑的 verify-local.sh --quick 在 typescript 阶段之前就退出了，一个让测试失败的改动就这样合进了 develop。和别的平台 job 一样，没动界面时照样跑完并说明跳过：这是必需检查，跳过的状态会挡住合并。
+  ui:
+    needs: changes
+    name: Shared settings UI
+    runs-on: depot-ubuntu-24.04
+    # 完整测试已接近 20 分钟；为依赖安装、类型检查和结果上传保留余量。
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        with:
+          node-version-file: .nvmrc
+      - name: Install Node dependencies
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Lint
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        run: pnpm run lint
+      - name: Type-check the settings shells
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        run: |
+          (cd apps/desktop && ./node_modules/.bin/tsc --noEmit -p tsconfig.json)
+          (cd apps/harmony && ./node_modules/.bin/tsc --noEmit -p tsconfig.json)
+      # 用项目自己的 vitest，不用 npx：npx 的那份从自己的缓存解析 jsdom，起不来 jsdom worker 却照样报成功（见 verify-local.sh 的 typescript 阶段）。
+      - name: Run the shared UI tests
+        if: ${{ needs.changes.outputs.ui == 'true' }}
+        run: cd apps/desktop && ./node_modules/.bin/vitest run --maxWorkers=2 --reporter=verbose --reporter=junit --outputFile=../../target/shared-ui-junit.xml
+      - name: Upload shared UI test results
+        if: ${{ always() && needs.changes.outputs.ui == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shared-ui-junit
+          path: target/shared-ui-junit.xml
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Shared UI unchanged
+        if: ${{ needs.changes.outputs.ui != 'true' }}
+        run: echo 'No shared UI changes; UI tests skipped.'
+
+  windows:
+    needs: changes
+    name: Windows GNU cross build
+    runs-on: depot-ubuntu-24.04-16
+    # Ubuntu 24.04 的 MinGW 缺少 `msimeui` 使用的 `d2d1_3.h`，因此沿用交叉镜像的 Debian 系统依赖与线程模型，`checkout` 后复用同一别名脚本。
+    container: debian:trixie-slim
+    timeout-minutes: 90
+    steps:
+      - name: Install MinGW cross toolchain
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends g++-mingw-w64-x86-64 build-essential cmake ninja-build pkg-config curl ca-certificates git zip unzip tar python3
+          # The unsuffixed compiler defaults to the win32 thread model, whose C++ library has no std::thread.
+          update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      # Checked out after git is installed, so the tree is a real repository rather than an API download.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare MinGW header aliases
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        run: |
+          python3 platforms/windows/cross/add-header-aliases.py \
+            /usr/share/mingw-w64/include /usr/x86_64-w64-mingw32/include
+      - name: Build Windows host, TSF DLL and native tests
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        run: |
+          # The workspace is owned by the runner user, not the container's root.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          # Installs the toolchain rust-toolchain.toml pins.
+          rustup toolchain install
+          bash platforms/windows/build-cross.sh x64
+      # 候选皮肤截图工具在这里随整棵树一起交叉编译，由下面的 windows-skin-gallery 作业在 Windows runner 上运行。只带它和它加载的 DLL，去掉调试信息：Debug 构建的 host DLL 带着整个引擎的调试信息。
+      - name: Stage the candidate skin gallery tool
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        run: |
+          stage=target/windows-candidate-skin-gallery-tool
+          mkdir -p "$stage"
+          for file in msime-candidate-skin-gallery.exe windows-candidate-image-animation.exe windows-candidate-canvas-preview.exe msime_host_api.dll libstdc++-6.dll libwinpthread-1.dll libgcc_s_seh-1.dll; do
+            x86_64-w64-mingw32-strip --strip-debug -o "$stage/$file" "target/windows-full/x64/$file"
+          done
+          ls -l "$stage"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        with:
+          name: windows-candidate-skin-gallery-tool
+          path: target/windows-candidate-skin-gallery-tool/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Windows platform unchanged
+        if: ${{ needs.changes.outputs.windows != 'true' }}
+        run: echo 'No Windows or shared-platform changes; platform gate skipped.'
+
+  # 候选皮肤截图：上面交叉编译的截图工具用 Server 的候选窗把 crates/client-services/tests/fixtures/candidate-skins 里的每款皮肤（和不带皮肤的基线）按横竖排、浅深色画在一页假候选上，从这台 runner 的桌面截下来，作为 windows-candidate-skin-gallery 产物上传，没有 Windows 机器也能看皮肤画得对不对。皮肤加载失败、截图失败或截到空白时这一步失败。
+  windows-skin-gallery:
+    needs: [changes, windows]
+    name: Windows candidate skin gallery
+    # 留在 GitHub 托管的 runner：截图要从交互式桌面截，没确认过 Depot 的 Windows runner 有没有；这个 job 只跑一两分钟。
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        with:
+          name: windows-candidate-skin-gallery-tool
+          path: target/windows-candidate-skin-gallery-tool
+      # 托管 runner 的桌面缺省 1024 宽，候选窗最多占工作区一半宽，九个候选加释义挤在一起，英文释义被折成半个单词。调到 1920x1080，截图才像用户的屏幕；调不了只记一行，截图照样进行（工具日志里有实际的工作区）。
+      - name: Raise the desktop resolution
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: powershell
+        run: |
+          try {
+            Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop
+            Write-Host 'Desktop resolution set to 1920x1080'
+          } catch {
+            Write-Host "Desktop resolution unchanged: $($_.Exception.Message)"
+          }
+      - name: Render the candidate skins
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          & target/windows-candidate-skin-gallery-tool/windows-candidate-canvas-preview.exe
+          if ($LASTEXITCODE -ne 0) { throw "Candidate canvas preview tests failed with exit code $LASTEXITCODE" }
+          & target/windows-candidate-skin-gallery-tool/windows-candidate-image-animation.exe
+          if ($LASTEXITCODE -ne 0) { throw "Candidate image animation tests failed with exit code $LASTEXITCODE" }
+          & target/windows-candidate-skin-gallery-tool/msime-candidate-skin-gallery.exe --verify-image-animation --skins crates/client-services/tests/fixtures/candidate-skins --output target/windows-candidate-skin-gallery
+          # -1073741515 (0xC0000135) means a DLL the tool imports is missing from the staged directory.
+          if ($LASTEXITCODE -ne 0) { throw "Candidate skin gallery failed with exit code $LASTEXITCODE" }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && needs.changes.outputs.windows == 'true' }}
+        with:
+          name: windows-candidate-skin-gallery
+          path: target/windows-candidate-skin-gallery/
+          if-no-files-found: warn
+      - name: Windows platform unchanged
+        if: ${{ needs.changes.outputs.windows != 'true' }}
+        run: echo 'No Windows or shared-platform changes; skin gallery skipped.'
+
+  # WinUI 3 不在 MinGW 的编译范围内；直接使用发布设置工程做 MSVC 编译。
+  windows-settings:
+    needs: changes
+    name: Windows native settings
+    # 留在 GitHub 托管的 runner：冒烟要把设置窗口撑到 1000×780，Depot 的 Windows 机型主屏只有 800×600，显卡也只报这一档分辨率。
+    runs-on: windows-2025
+    # 完整 WinUI、Win7 设置、手写及多版本门禁已实测耗时 39 分钟，保留冷构建余量。
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check settings snapshot file sharing
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & platforms/windows/tests/tools/settings_snapshot_test.ps1
+      # GitHub 的 Windows 镜像导出 VCPKG_INSTALLATION_ROOT；Depot 在同样的 C:\vcpkg 中提供它，但没有这个变量。
+      - name: Locate vcpkg
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
+            if (-not (Test-Path -LiteralPath 'C:\vcpkg\scripts\buildsystems\vcpkg.cmake' -PathType Leaf)) { throw 'vcpkg not found' }
+            "VCPKG_INSTALLATION_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+          }
+      - name: Build the settings host
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          rustup toolchain install
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed' }
+          cargo build --locked -p msime-host-api -j 2
+          if ($LASTEXITCODE -ne 0) { throw 'Settings host library build failed' }
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = @(& $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\amd64\MSBuild.exe')
+          if ($msbuild.Count -lt 1) { throw 'MSBuild not found' }
+          # 设置工程直接由 MSBuild 构建，不经过 Build-Client.ps1，因此这里要显式准备它需要的 nlohmann/json.hpp。
+          $vcpkgRoot = if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_INSTALLATION_ROOT } else { 'C:\vcpkg' }
+          $nativeDeps = Join-Path $env:GITHUB_WORKSPACE 'target/windows-native-deps/settings'
+          & (Join-Path $vcpkgRoot 'vcpkg.exe') install 'nlohmann-json:x64-windows-static-md' "--x-install-root=$nativeDeps" --disable-metrics
+          if ($LASTEXITCODE -ne 0) { throw 'nlohmann-json install failed' }
+          $nativeInclude = Join-Path $nativeDeps 'x64-windows-static-md/include'
+          if (-not (Test-Path -LiteralPath (Join-Path $nativeInclude 'nlohmann/json.hpp') -PathType Leaf)) { throw 'nlohmann/json.hpp not found after vcpkg install' }
+          # 使用与发布脚本相同的完整 Build，确保 Windows SDK 引用和 WinRT 投影均已初始化。
+          $output = "$env:GITHUB_WORKSPACE/target/windows-full/x64/settings/"
+          & $msbuild[0] platforms/windows/settings/MSIME.Settings.vcxproj /restore /t:Build /p:Configuration=RelWithDebInfo /p:Platform=x64 /p:TargetName=msime-client-settings /p:HostApiLibrary="$env:GITHUB_WORKSPACE/target/debug/msime_host_api.dll.lib" /p:NativeDependenciesInclude="$nativeInclude" /p:OutDir="$output" /p:IntDir="$env:GITHUB_WORKSPACE/target/windows-full/x64/settings-obj/" /verbosity:minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Settings host build failed' }
+          Copy-Item target/debug/msime_host_api.dll $output
+      # 设置应用和 msime-mcp 的 Windows 路径（崩溃采集经 cc/MSVC 编译 CrashRecorder.cpp、遥测目录、配置路径）在 PR 里没有别的作业编译；这里编译设置应用（只编库和可执行文件：它的测试目标在 Windows 上编不过，macOS 专属的 macos_input_source 测试没有按平台排除）并跑 msime-mcp-server 的测试。Tauri 的构建脚本只要求 frontendDist 存在，放一个空页面。
+      - name: Compile the settings app and test msime-mcp-server
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force apps/desktop/dist | Out-Null
+          if (-not (Test-Path apps/desktop/dist/index.html)) { New-Item -ItemType File apps/desktop/dist/index.html | Out-Null }
+          cargo check --locked -p msime-desktop -j 2
+          if ($LASTEXITCODE -ne 0) { throw 'Settings app check failed' }
+          cargo test --locked -p msime-mcp-server -j 2
+          if ($LASTEXITCODE -ne 0) { throw 'MCP server tests failed' }
+      # 共享存储替换设置文件时，目标被别的进程短暂打开（杀毒、备份、索引）要等它过去，而不是让设置页把这次保存当成失败、重读旧值。这几条测试在真的 Windows 上打开着目标去替换，macOS 和 Linux 的作业碰不到这种失败。
+      - name: Test shared storage replacement while the target is open
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo test --locked -p msime-client-base --lib -j 2 -- storage::tests::transient_replace storage::tests::replace_ storage::tests::persist_replacing
+          if ($LASTEXITCODE -ne 0) { throw 'Shared storage replacement tests failed' }
+          cargo test --locked -p msime-client-core --lib -j 2 -- preferences::tests::save_waits_for_a_reader preferences::tests::error_wordings_the_harmony_host_matches_on
+          if ($LASTEXITCODE -ne 0) { throw 'Preferences save retry tests failed' }
+      # 会话在一个线程上创建、换到另一个线程上用完并销毁，创建它的线程还活着时，清除学习数据要能改名替换日志：别的线程空闲着的日志连接也得先关掉。开着的句柄只在 Windows 上挡住改名，Linux 的 engine 作业跑同一个测试测不出来。
+      - name: Test resetting learned data after a session crossed threads
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo test --locked -p msime-engine -j 2 --test session_threads
+          if ($LASTEXITCODE -ne 0) { throw 'Engine session thread tests failed' }
+      - name: Build and test the compatibility settings host
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/buildsystems/vcpkg.cmake'
+          if (-not (Test-Path -LiteralPath $toolchain -PathType Leaf)) { throw 'vcpkg toolchain not found' }
+          $output = 'target/windows-full/x64/win7-settings'
+          # 使用同一提交的普通核心验证 HWND 和持久化；Win7 目标与实机另做验收。
+          cmake -S platforms/windows/settings/win7 -B $output -A x64 "-DCMAKE_TOOLCHAIN_FILE=$toolchain" "-DVCPKG_INSTALLED_DIR=$env:GITHUB_WORKSPACE/target/windows-native-deps/win7-settings" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md "-DMSIME_HOST_LIBRARY=$env:GITHUB_WORKSPACE/target/debug/msime_host_api.dll.lib"
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility settings configuration failed' }
+          cmake --build $output --config RelWithDebInfo --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility settings build failed' }
+          Copy-Item target/debug/msime_host_api.dll "$output/RelWithDebInfo/"
+          ctest --test-dir $output -C RelWithDebInfo --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility settings tests failed' }
+          cmake -S platforms/windows/compat -B target/windows7-compat/x64 -A x64
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility API configuration failed' }
+          cmake --build target/windows7-compat/x64 --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility API build failed' }
+          ctest --test-dir target/windows7-compat/x64 -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Compatibility API tests failed' }
+          & ./platforms/windows/tests/tools/windows7_imports.ps1
+      # 独立工程复用生产采集器和 helper，只依赖已有的头文件包，不重新构建完整产品或 Rust。
+      - name: Build and run TSF system WER capture (x64 and x86)
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $jsonConfig = "$env:GITHUB_WORKSPACE/target/windows-native-deps/win7-settings/x64-windows-static-md/share/nlohmann_json"
+          if (-not (Test-Path -LiteralPath "$jsonConfig/nlohmann_jsonConfig.cmake" -PathType Leaf)) { throw 'nlohmann-json configuration not found' }
+          foreach ($architecture in @(@{ Name = 'x64'; Generator = 'x64' }, @{ Name = 'x86'; Generator = 'Win32' })) {
+            $build = "target/windows-full/$($architecture.Name)/wer-lifecycle"
+            cmake -S platforms/windows/tsf/tests/capture_lifecycle -B $build -A $architecture.Generator "-Dnlohmann_json_DIR=$jsonConfig"
+            if ($LASTEXITCODE -ne 0) { throw "$($architecture.Name) TSF WER configuration failed" }
+            cmake --build $build --config RelWithDebInfo --parallel 2
+            if ($LASTEXITCODE -ne 0) { throw "$($architecture.Name) TSF WER build failed" }
+            ctest --test-dir $build -C RelWithDebInfo --output-on-failure --output-junit wer-tests.xml
+            if ($LASTEXITCODE -ne 0) { throw "$($architecture.Name) TSF WER callback or lifecycle test failed" }
+            & platforms/windows/tsf/tests/Invoke-SystemWer.ps1 -BuildDirectory $build -OutputDirectory "$build/system-wer"
+            if ($LASTEXITCODE -ne 0) { throw "$($architecture.Name) TSF system WER capture failed" }
+          }
+      - name: Build and test Windows 7 handwriting host
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo test --locked -p msime-host-windows --lib ink::
+          if ($LASTEXITCODE -ne 0) { throw 'Windows handwriting backend tests failed' }
+          cargo test --locked -p msime-host-api --lib windows_handwriting::
+          if ($LASTEXITCODE -ne 0) { throw 'Windows handwriting ABI tests failed' }
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/buildsystems/vcpkg.cmake'
+          $output = 'target/windows-full/x64/win7-panels'
+          # 复用设置窗口的最小依赖清单；普通核心验证控件，Win7 目标另做兼容验收。
+          cmake -S platforms/windows/panels/win7 -B $output -A x64 "-DCMAKE_TOOLCHAIN_FILE=$toolchain" "-DVCPKG_MANIFEST_DIR=$env:GITHUB_WORKSPACE/platforms/windows/settings/win7" "-DVCPKG_INSTALLED_DIR=$env:GITHUB_WORKSPACE/target/windows-native-deps/win7-settings" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md "-DMSIME_HOST_LIBRARY=$env:GITHUB_WORKSPACE/target/debug/msime_host_api.dll.lib"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 7 handwriting configuration failed' }
+          cmake --build $output --config RelWithDebInfo --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 7 handwriting build failed' }
+          Copy-Item target/debug/msime_host_api.dll "$output/RelWithDebInfo/"
+          ctest --test-dir $output -C RelWithDebInfo --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 7 handwriting controls tests failed' }
+          # 同一份面板源码的现代 Windows 变体：Build-Client.ps1 把它编成 msime-client-panels.exe 随现代包安装（MSIME_WINDOWS_PANEL_HOST=native 时承载面板）。不链接 HarfBuzz、版本取 version.txt、跳到别的界面时找现代包的程序名，这里用同一套面板测试核对它在现代 Windows 上编得过、跑得通。
+          $modern = 'target/windows-full/x64/panels'
+          cmake -S platforms/windows/panels/win7 -B $modern -A x64 -DMSIME_PANELS_MODERN_WINDOWS=ON "-DCMAKE_TOOLCHAIN_FILE=$toolchain" "-DVCPKG_MANIFEST_DIR=$env:GITHUB_WORKSPACE/platforms/windows/settings/win7" "-DVCPKG_INSTALLED_DIR=$env:GITHUB_WORKSPACE/target/windows-native-deps/win7-settings" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md "-DMSIME_HOST_LIBRARY=$env:GITHUB_WORKSPACE/target/debug/msime_host_api.dll.lib"
+          if ($LASTEXITCODE -ne 0) { throw 'Modern native panel host configuration failed' }
+          cmake --build $modern --config RelWithDebInfo --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Modern native panel host build failed' }
+          if (-not (Test-Path -LiteralPath "$modern/RelWithDebInfo/msime-client-panels.exe" -PathType Leaf) -or (Test-Path -LiteralPath "$modern/RelWithDebInfo/msime-client-panels-win7.exe")) { throw 'Modern native panel host has the wrong executable name' }
+          Copy-Item target/debug/msime_host_api.dll "$modern/RelWithDebInfo/"
+          ctest --test-dir $modern -C RelWithDebInfo --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Modern native panel host tests failed' }
+      - name: Check Windows 7 product editions
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/buildsystems/vcpkg.cmake'
+          foreach ($edition in @('wubi', 'japanese')) {
+            foreach ($surface in @('settings', 'panels')) {
+              $output = "target/windows-$edition/x64/win7-$surface"
+              cmake -S "platforms/windows/$surface/win7" -B $output -A x64 "-DMSIME_EDITION=$edition" "-DCMAKE_TOOLCHAIN_FILE=$toolchain" "-DVCPKG_MANIFEST_DIR=$env:GITHUB_WORKSPACE/platforms/windows/settings/win7" "-DVCPKG_INSTALLED_DIR=$env:GITHUB_WORKSPACE/target/windows-native-deps/win7-settings" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md "-DMSIME_HOST_LIBRARY=$env:GITHUB_WORKSPACE/target/debug/msime_host_api.dll.lib"
+              if ($LASTEXITCODE -ne 0) { throw "Windows 7 $edition $surface configuration failed" }
+              cmake --build $output --config RelWithDebInfo --parallel 2
+              if ($LASTEXITCODE -ne 0) { throw "Windows 7 $edition $surface build failed" }
+              Copy-Item target/debug/msime_host_api.dll "$output/RelWithDebInfo/"
+              ctest --test-dir $output -C RelWithDebInfo --output-on-failure
+              if ($LASTEXITCODE -ne 0) { throw "Windows 7 $edition $surface tests failed" }
+            }
+          }
+      - name: Inspect native settings pages
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: powershell
+        run: |
+          & platforms/windows/tests/tools/settings_ui.ps1 -Program target/windows-full/x64/settings/msime-client-settings.exe -OutputDirectory target/windows-full/x64/settings-screenshots
+          if ($LASTEXITCODE -ne 0) { throw 'Settings UI smoke failed' }
+      - name: Inspect custom voice recorder
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: powershell
+        run: |
+          & platforms/windows/tests/tools/settings_ui.ps1 -Program target/windows-full/x64/settings/msime-client-settings.exe -OutputDirectory target/windows-full/x64/settings-screenshots/voice-hotkey -VoiceHotkeyOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Voice hotkey UI smoke failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && needs.changes.outputs.windows == 'true' }}
+        with:
+          name: windows-native-settings-screenshots
+          path: target/windows-full/x64/settings-screenshots/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && needs.changes.outputs.windows == 'true' }}
+        with:
+          name: windows-tsf-system-wer
+          path: |
+            target/windows-full/*/wer-lifecycle/system-wer/
+            target/windows-full/*/wer-lifecycle/wer-tests.xml
+          if-no-files-found: warn
+      - name: Windows settings unchanged
+        if: ${{ needs.changes.outputs.windows != 'true' }}
+        run: echo 'No Windows settings changes; native gate skipped.'
+
+  windows-scripts:
+    needs: changes
+    name: Windows release script tests
+    # 发版脚本是在 Windows 上跑的 PowerShell，上面的交叉构建容器里没有 pwsh，所以它们的探测测试放在 Windows runner 上。脚本测试本身不编译；末尾的状态目录和候选取色两步是这里仅有的原生构建，共用一棵 pipe-only 构建树，只编几个只依赖头文件的测试目标。
+    runs-on: depot-windows-2025-8
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run release script tests
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          foreach ($test in 'portable_executable', 'runtime_dependencies', 'collect_notices', 'build_client') {
+            Write-Host "== $test"
+            & pwsh -NoProfile -File "platforms/windows/tests/tools/$test.ps1"
+            if ($LASTEXITCODE -ne 0) { throw "$test failed with exit code $LASTEXITCODE" }
+          }
+      - name: Verify Server manifest modes and unsigned launch
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: ./platforms/windows/tests/server-manifest/verify.ps1
+      # The installer script itself cannot be compiled here, so these read msime_setup.iss for its lifecycle contracts. watchdog-task also registers the logon task's exact /TR text with Task Scheduler under a throwaway name and reads back what schtasks stored; the hosted runner is elevated, which that round trip needs.
+      # repo-root 之前不在这张单子上，也不在别的流水线里，所以它从来没跑过：它只解析 Prepare-PackageFiles.ps1 的参数声明，不碰磁盘，和同列的其他几个一样不需要装过的包，漏掉是疏忽而不是前置条件不足。
+      - name: Run installer script tests
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          foreach ($test in 'lifecycle', 'watchdog-task', 'tauri-layout', 'tsf-registration', 'signpath-payload', 'installer_entry', 'package-files', 'repo-root') {
+            Write-Host "== $test"
+            & pwsh -NoProfile -File "platforms/windows/installer/tests/$test.ps1"
+            if ($LASTEXITCODE -ne 0) { throw "$test failed with exit code $LASTEXITCODE" }
+          }
+      # 状态根和安装登记的注册表读取（common/StateDirectory.h、common/RegistryString.h）只能在真的 Windows 上跑：Windows GNU 交叉编译作业编这个测试但不运行，windows-settings 的 ctest 用的是 Win7 设置、面板和兼容 API 各自的构建树，所以这里单独编 windows-state-directory，x64 和 Win32 各跑一次。Win32 进程在这台 x64 runner 上走 WOW64，覆盖 32 位进程用 KEY_WOW64_64KEY 读 64 位视图，以及多余终止符、缺值、缺键和非字符串值。Win7 上 RRF_SUBKEY_WOW6464KEY 读不到、显式打开视图读得到的差别在现代 Windows 上不出现，这里测不出，只能在 Win7 x64 实机上验收。Server、watchdog 和准备程序共用的崩溃记录器（common/CrashRecorder.cpp）同样只依赖 Windows SDK，windows-crash-recorder 在同一构建树里以 MSVC /W4 /WX 编译，x64 和 Win32 各让子进程真实崩溃一次，核对落盘记录、解除武装后不写和 terminate 摘要优先。pipe-only 配置不链接 Rust 库，但根 CMakeLists 无条件找 nlohmann_json，所以只从 runner 自带的 vcpkg 装这一个头文件库，不按清单装 curl 等全部依赖。
+      - name: Test the state directory, registry view and crash recorder as x64 and x86
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # GitHub 的 Windows 镜像导出 VCPKG_INSTALLATION_ROOT；Depot 在同样的 C:\vcpkg 中提供它，但没有这个变量。
+          $vcpkgRoot = if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_INSTALLATION_ROOT } else { 'C:\vcpkg' }
+          $toolchain = Join-Path $vcpkgRoot 'scripts/buildsystems/vcpkg.cmake'
+          if (-not (Test-Path -LiteralPath $toolchain -PathType Leaf)) { throw 'vcpkg toolchain not found' }
+          $installed = Join-Path $env:GITHUB_WORKSPACE 'target/windows-native-deps/state-directory'
+          foreach ($arch in @(@{ Platform = 'x64'; Triplet = 'x64-windows' }, @{ Platform = 'Win32'; Triplet = 'x86-windows' })) {
+            Write-Host "== $($arch.Platform)"
+            & (Join-Path $vcpkgRoot 'vcpkg.exe') install "nlohmann-json:$($arch.Triplet)" "--x-install-root=$installed" --disable-metrics
+            if ($LASTEXITCODE -ne 0) { throw "nlohmann-json install failed for $($arch.Triplet)" }
+            $output = "target/windows-state-directory/$($arch.Platform)"
+            cmake -S platforms/windows -B $output -A $arch.Platform -DMSIME_WINDOWS_PIPE_ONLY=ON "-DCMAKE_TOOLCHAIN_FILE=$toolchain" -DVCPKG_MANIFEST_MODE=OFF "-DVCPKG_INSTALLED_DIR=$installed" "-DVCPKG_TARGET_TRIPLET=$($arch.Triplet)"
+            if ($LASTEXITCODE -ne 0) { throw "State directory configuration failed for $($arch.Platform)" }
+            cmake --build $output --config Release --target windows-state-directory windows-crash-recorder --parallel 2
+            if ($LASTEXITCODE -ne 0) { throw "State directory build failed for $($arch.Platform)" }
+            ctest --test-dir $output -C Release -R '^(windows-state-directory|windows-crash-recorder)$' --output-on-failure --no-tests=error
+            if ($LASTEXITCODE -ne 0) { throw "State directory tests failed for $($arch.Platform)" }
+          }
+      # 候选窗的取色（CandidatePalette.h、CandidateSkin.h：默认选中行的对比度、选中行释义色、皮肤槽位）只用头文件和 nlohmann_json，在 Windows GNU 交叉编译作业里只编译不运行。这里复用上一步 x64 的 pipe-only 构建树，用 MSVC 编译并运行 windows-candidate-palette 和 windows-candidate-skin，不另装依赖。
+      - name: Test the candidate palette and skin colours
+        if: ${{ needs.changes.outputs.windows == 'true' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = 'target/windows-state-directory/x64'
+          cmake --build $output --config Release --target windows-candidate-palette windows-candidate-skin --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate palette build failed' }
+          ctest --test-dir $output -C Release -R '^windows-candidate-(palette|skin)$' --output-on-failure --no-tests=error
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate palette tests failed' }
+      - name: Windows platform unchanged
+        if: ${{ needs.changes.outputs.windows != 'true' }}
+        run: echo 'No Windows or shared-platform changes; platform gate skipped.'
+
+  web-engine:
+    needs: changes
+    name: Web engine (wasm)
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install sccache
+        id: sccache
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        continue-on-error: true
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - name: Enable sccache
+        if: ${{ needs.changes.outputs.web == 'true' && steps.sccache.outcome == 'success' }}
+        shell: bash
+        run: |
+          if sccache --start-server; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "::warning::sccache did not start; the Rust build runs without the compile cache"
+          fi
+      # wasm-bindgen CLI 必须和 crates/engine-wasm 钉住的 wasm-bindgen crate 同为 0.2.128，wasm-opt 用 binaryen version_133；两个官方 tarball 的 SHA-256 记在这里，下载后先校验再用。release-web-engine.yml 用同样的两份。
+      - name: Install LLVM, the wasm target, wasm-bindgen and wasm-opt
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        env:
+          WASM_BINDGEN_URL: https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.128/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl.tar.gz
+          WASM_BINDGEN_SHA256: b51f0208fdff83515a787bd8ab9ac5865ed84dabb66d0c709957bb59793c645f
+          BINARYEN_URL: https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz
+          BINARYEN_SHA256: 2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang llvm
+          # Installs the toolchain rust-toolchain.toml pins.
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+          tools="$RUNNER_TEMP/web-engine-tools"
+          mkdir -p "$tools"
+          curl -sSfL -o "$tools/wasm-bindgen.tar.gz" "$WASM_BINDGEN_URL"
+          echo "$WASM_BINDGEN_SHA256  $tools/wasm-bindgen.tar.gz" | sha256sum -c -
+          tar -xzf "$tools/wasm-bindgen.tar.gz" -C "$tools"
+          curl -sSfL -o "$tools/binaryen.tar.gz" "$BINARYEN_URL"
+          echo "$BINARYEN_SHA256  $tools/binaryen.tar.gz" | sha256sum -c -
+          tar -xzf "$tools/binaryen.tar.gz" -C "$tools"
+          echo "$tools/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+          echo "$tools/binaryen-version_133/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        with:
+          node-version-file: .nvmrc
+      # 不带词库和模型：它们是 release 才下载的大文件。NOTICE 的 --check 在脚本里跑。
+      - name: Build the web engine
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        run: scripts/build-web-engine.sh --no-data
+      - name: Smoke test the built glue and wasm in Node
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        run: |
+          cargo run --locked -p msime-engine-wasm --example make_fixture -- target/web-engine/fixture/msime.db
+          cargo run --locked -p msime-engine-wasm --example make_fixture -- target/web-engine/fixture/msime-cantonese.db --cantonese
+          node crates/engine-wasm/tests/smoke.mjs target/web-engine/fixture/msime.db
+      # SDK（@msime/web-engine）：test/ 下全部 *.test.mjs 单元测试（按键映射、皮肤解析等，glob 由 Node 自己展开），对构建脚本组装出的 npm 包做的端到端冒烟，以及在 runner 自带的 google-chrome 里跑的候选栏和 attachInput 接线检查（candidates.browser.mjs）。
+      - name: Test the web engine SDK
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        run: |
+          node --test 'packages/web-engine/test/*.test.mjs'
+          node packages/web-engine/test/smoke.mjs target/web-engine/fixture/msime.db --cantonese target/web-engine/fixture/msime-cantonese.db
+          node packages/web-engine/test/candidates.browser.mjs
+      # 包括 routing.rs 和 notice.rs；parity.rs 与 rerank_routing.rs 需要真实词库，没有 MSIME_EVAL_RESOURCES 时跳过。
+      - name: Test msime-engine-wasm
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        run: cargo test --locked -p msime-engine-wasm
+      # bindings.rs 只在 wasm32 上编译，只有这一步会 lint 到它。
+      - name: Clippy on the wasm target
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        env:
+          CC_wasm32_unknown_unknown: clang
+          AR_wasm32_unknown_unknown: llvm-ar
+        run: cargo clippy --locked -p msime-engine-wasm --target wasm32-unknown-unknown -- -D warnings
+      # PR 上只验证能构建，不出产物。
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ needs.changes.outputs.web == 'true' && github.event_name != 'pull_request' }}
+        with:
+          name: web-engine-${{ github.sha }}
+          path: target/web-engine/dist/
+          if-no-files-found: error
+      - name: Web engine unchanged
+        if: ${{ needs.changes.outputs.web != 'true' }}
+        run: echo 'No web engine or shared changes; web engine gate skipped.'
